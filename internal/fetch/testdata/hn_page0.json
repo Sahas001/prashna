@@ -1,0 +1,30 @@
+{
+  "hits": [
+    {
+      "objectID": "45000001",
+      "title": "Leaderless Consensus for Geo-Distributed Key-Value Stores",
+      "url": "https://arxiv.org/pdf/2611.01234v1.pdf",
+      "author": "pg",
+      "points": 312,
+      "num_comments": 87,
+      "created_at_i": 1762600000,
+      "story_text": null,
+      "_tags": ["story", "author_pg", "story_45000001", "front_page"]
+    },
+    {
+      "objectID": "45000002",
+      "title": "Ask HN: How do you keep up with papers?",
+      "url": null,
+      "author": "someone",
+      "points": 120,
+      "num_comments": 140,
+      "created_at_i": 1762610000,
+      "story_text": "<p>I&#x27;m drowning in <i>arXiv</i> &amp; HN.<p>What works for you?",
+      "_tags": ["story", "ask_hn", "author_someone", "story_45000002"]
+    }
+  ],
+  "nbHits": 3,
+  "page": 0,
+  "nbPages": 2,
+  "hitsPerPage": 2
+}

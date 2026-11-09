@@ -1,0 +1,5 @@
+/radar
+*.db
+*.db-shm
+*.db-wal
+radar.yaml

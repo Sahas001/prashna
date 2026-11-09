@@ -1,0 +1,47 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161a18" media="(prefers-color-scheme: dark)">
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0}'>
+<meta name="robots" content="noindex">
+<title>{{.Title}} · Radar</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="{{asset "icons/icon.svg"}}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{asset "icons/icon-192.png"}}">
+<link rel="stylesheet" href="{{asset "app.css"}}">
+<script src="{{asset "htmx.min.js"}}" defer></script>
+<script src="{{asset "app.js"}}" defer></script>
+</head>
+<body hx-boost="true"{{if .ShowNav}} class="has-nav"{{end}}>
+{{- if .ShowNav}}
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="/"><img src="{{asset "icons/icon.svg"}}" alt="" width="28" height="28"><span>Radar</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="/"{{if eq .Nav "today"}} aria-current="page"{{end}}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" class="fill"/></svg><span>Today</span></a>
+      <a href="/saved"{{if eq .Nav "saved"}} aria-current="page"{{end}}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a1 1 0 0 1 1 1V21l-6-4-6 4V4.5a1 1 0 0 1 1-1z"/></svg><span>Reading list</span><b id="unread-badge" class="count">{{if .Unread}}{{.Unread}}{{end}}</b></a>
+      <a href="/history"{{if eq .Nav "history"}} aria-current="page"{{end}}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span></a>
+      <a href="/interests"{{if eq .Nav "interests"}} aria-current="page"{{end}}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Interests</span></a>
+      <a href="/feeds"{{if eq .Nav "feeds"}} aria-current="page"{{end}}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5a14 14 0 0 1 14 14M5 11a8 8 0 0 1 8 8"/><circle cx="6" cy="18" r="1.4" class="fill"/></svg><span>Feeds</span></a>
+    </nav>
+    {{- if .CanOut}}
+    <form method="post" action="/logout" class="signout"><button type="submit" class="link">Sign out</button></form>
+    {{- end}}
+  </div>
+</header>
+{{- end}}
+<main class="wrap">
+{{template "content" .Data}}
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
+{{end}}

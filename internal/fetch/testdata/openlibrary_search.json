@@ -1,0 +1,20 @@
+{
+  "numFound": 2,
+  "docs": [
+    {
+      "key": "/works/OL99W",
+      "title": "Exhalation",
+      "author_name": ["Ted Chiang"],
+      "first_publish_year": 2026,
+      "cover_i": 12345,
+      "subject": ["Science fiction", "Short stories"],
+      "number_of_pages_median": 350
+    },
+    {
+      "key": "/works/OL98W",
+      "title": "A book that mentions Ted Chiang",
+      "author_name": ["Someone Else"],
+      "first_publish_year": 2025
+    }
+  ]
+}

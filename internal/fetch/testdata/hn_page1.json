@@ -1,0 +1,26 @@
+{
+  "hits": [
+    {
+      "objectID": "45000003",
+      "title": "Show HN: A tiny SQLite-backed job queue",
+      "url": "https://www.example.com/queue/?utm_source=hn",
+      "author": "builder",
+      "points": 75,
+      "num_comments": 20,
+      "created_at_i": 1762620000,
+      "_tags": ["story", "show_hn", "author_builder", "story_45000003"]
+    },
+    {
+      "objectID": "45000004",
+      "title": "",
+      "url": "https://example.com/untitled",
+      "points": 60,
+      "created_at_i": 1762620001,
+      "_tags": ["story"]
+    }
+  ],
+  "nbHits": 3,
+  "page": 1,
+  "nbPages": 2,
+  "hitsPerPage": 2
+}

@@ -1,0 +1,109 @@
+{{define "interests"}}
+<section id="interests" class="panel">
+  <div class="panel-head">
+    <h2>Interests</h2>
+    <p class="hint">Words and phrases match titles, summaries and tags. A tag such as <code>cs.DC</code> or an author's name matches exactly. A negative weight pushes matching items down.</p>
+  </div>
+  <form class="add-row" hx-post="/interests" hx-target="#interests" hx-swap="outerHTML">
+    <input name="term" placeholder="e.g. consensus protocols" value="{{.Term}}" aria-label="Interest" required maxlength="100" autocomplete="off">
+    <input name="weight" type="number" step="0.5" min="-3" max="3" value="1" aria-label="Weight" class="weight">
+    <button type="submit" class="btn primary">Add</button>
+  </form>
+  {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+  {{- if .Interests}}
+  <ul class="rows">
+    {{- range .Interests}}
+    <li class="row{{if lt .Weight 0.0}} negative{{end}}">
+      <span class="term">{{.Term}}</span>
+      <input type="number" step="0.5" min="-3" max="3" name="weight" value="{{.Weight}}" aria-label="Weight for {{.Term}}" class="weight"
+        hx-post="/interests/{{.ID}}/weight" hx-trigger="change" hx-target="#interests" hx-swap="outerHTML">
+      <button type="button" class="icon-btn" title="Remove {{.Term}}" aria-label="Remove {{.Term}}"
+        hx-post="/interests/{{.ID}}/delete" hx-target="#interests" hx-swap="outerHTML">×</button>
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty-inline">No interests yet. Add a few topics so Radar knows what to look for.</p>
+  {{- end}}
+</section>
+{{end}}
+
+{{define "follows"}}
+<section id="follows-{{.Kind}}" class="panel">
+  <div class="panel-head">
+    <h2>{{.Title}}</h2>
+    <p class="hint">{{.Hint}}</p>
+  </div>
+  <form class="add-row" hx-post="/follows" hx-target="#follows-{{.Kind}}" hx-swap="outerHTML">
+    <input type="hidden" name="kind" value="{{.Kind}}">
+    <input name="name" placeholder="{{.Placeholder}}" aria-label="{{.Title}}" required maxlength="100" autocomplete="off">
+    <button type="submit" class="btn primary">Add</button>
+  </form>
+  {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+  {{- if .Items}}
+  <ul class="chips">
+    {{- range .Items}}
+    <li class="chip">{{.Name}}<button type="button" title="Remove {{.Name}}" aria-label="Remove {{.Name}}"
+      hx-post="/follows/{{.ID}}/delete" hx-vals='{"kind": "{{.Kind}}"}' hx-target="#follows-{{.Kind}}" hx-swap="outerHTML">×</button></li>
+    {{- end}}
+  </ul>
+  {{- end}}
+</section>
+{{end}}
+
+{{define "feeds"}}
+<section id="feeds" class="panel"{{if .Fetching}} hx-get="/feeds?partial=1" hx-trigger="every 3s" hx-swap="outerHTML"{{end}}>
+  <form class="feed-form" hx-post="/feeds" hx-target="#feeds" hx-swap="outerHTML">
+    <div class="field wide">
+      <label for="feed-url">Feed URL</label>
+      <input id="feed-url" name="url" type="url" placeholder="https://example.com/feed.xml" value="{{.Form.URL}}" required>
+    </div>
+    <div class="field">
+      <label for="feed-name">Name <span class="opt">optional</span></label>
+      <input id="feed-name" name="name" placeholder="Uses the feed's title" value="{{.Form.Name}}">
+    </div>
+    <div class="field">
+      <label for="feed-tags">Tags <span class="opt">comma-separated</span></label>
+      <input id="feed-tags" name="tags" placeholder="distributed systems" value="{{.Form.Tags}}">
+    </div>
+    <div class="field narrow">
+      <label for="feed-type">Shown as</label>
+      <select id="feed-type" name="type">
+        <option value="article"{{if eq .Form.Type "article"}} selected{{end}}>Articles</option>
+        <option value="news"{{if eq .Form.Type "news"}} selected{{end}}>Discussions</option>
+        <option value="paper"{{if eq .Form.Type "paper"}} selected{{end}}>Papers</option>
+      </select>
+    </div>
+    <div class="field submit"><button type="submit" class="btn primary">Add feed<span class="htmx-indicator"> …</span></button></div>
+  </form>
+  {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+  {{- if .Message}}<p class="form-ok" role="status">{{.Message}}</p>{{end}}
+
+  <div class="feeds-head">
+    <h2>{{len .Feeds}} {{plural (len .Feeds) "feed" "feeds"}}</h2>
+    {{- if .CanFetch}}
+    <button type="button" class="btn" hx-post="/feeds/fetch" hx-target="#feeds" hx-swap="outerHTML"{{if .Fetching}} disabled{{end}}>{{if .Fetching}}Fetching…{{else}}Fetch now{{end}}</button>
+    {{- end}}
+  </div>
+  {{- if .Feeds}}
+  <ul class="feed-list">
+    {{- range .Feeds}}
+    <li class="feed{{if not .Enabled}} off{{end}}">
+      <div class="feed-main">
+        <div class="feed-title">{{.Title}}{{if ne (printf "%s" .Type) "article"}} <span class="type type-{{.Type}}">{{typeLabel .Type}}</span>{{end}}</div>
+        <div class="feed-url">{{.URL}}</div>
+        {{- if .Tags}}<div class="feed-tags">{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</div>{{end}}
+        <div class="status {{.StatusClass}}">{{if .Enabled}}{{.Status}}{{else}}Paused{{end}}</div>
+      </div>
+      <div class="feed-actions">
+        <button type="button" class="btn small" hx-post="/feeds/{{.ID}}/toggle" hx-vals='{"enabled": "{{not .Enabled}}"}' hx-target="#feeds" hx-swap="outerHTML">{{if .Enabled}}Pause{{else}}Resume{{end}}</button>
+        <button type="button" class="btn small danger" hx-post="/feeds/{{.ID}}/delete" hx-confirm="Stop following {{.Title}}?" hx-target="#feeds" hx-swap="outerHTML">Remove</button>
+      </div>
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty-inline">No feeds yet. Add a blog's RSS or Atom feed above.</p>
+  {{- end}}
+</section>
+{{end}}

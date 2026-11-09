@@ -1,0 +1,9 @@
+{{define "content"}}
+<div class="auth">
+  <img src="{{asset "icons/icon.svg"}}" alt="" width="56" height="56">
+  <h1>Set a password</h1>
+  <p>The web UI is locked until you set a password. Set the environment variable named in <code>server.password_env</code> (default <code>RADAR_UI_PASSWORD</code>), then restart <code>radar serve</code>.</p>
+  <p class="hint">If your network already controls who can reach Radar (Tailscale, a LAN-only address, or an authenticating proxy), you can set <code>server.ui_auth: none</code> instead.</p>
+  <p class="hint">Feedback links in your digest emails work either way.</p>
+</div>
+{{end}}

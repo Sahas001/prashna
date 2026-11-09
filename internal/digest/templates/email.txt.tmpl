@@ -1,0 +1,29 @@
+RADAR - {{.Date.Format "Monday, 2 January"}}
+{{.Count}} picks, ranked against your interests.
+{{range .Sections}}
+
+== {{.Title}} ==
+{{range .Entries}}
+* {{.Item.Title}}
+  {{.Item.URL}}
+{{- if .Byline}}
+  {{.Byline}}
+{{- end}}
+{{- if .Discussion}}
+  discussion: {{.Discussion}}
+{{- end}}
+{{- if .Snippet}}
+
+{{wrap 76 "  " .Snippet}}
+{{- end}}
+{{- if .Why}}
+  ({{.Why}})
+{{- end}}
+
+  More like this: {{.Up}}
+  Less:           {{.Down}}
+{{end}}
+{{- end}}
+
+--
+Your ratings tune future digests. Each item is only sent once.

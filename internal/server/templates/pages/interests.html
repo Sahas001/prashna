@@ -1,0 +1,9 @@
+{{define "content"}}
+<div class="page-head">
+  <h1>Interests</h1>
+  <p class="sub">What Radar looks for. Changes re-rank everything right away.</p>
+</div>
+{{template "interests" .Interests}}
+{{template "follows" .Authors}}
+{{template "follows" .Subjects}}
+{{end}}

@@ -1,0 +1,140 @@
+# Radar configuration. Copy to radar.yaml and edit.
+# Every key is optional; omitted keys use the defaults shown here.
+#
+# `interests`, `sources.rss.feeds` and `sources.books.authors/subjects` are
+# imported into the database the first time Radar runs. After that, edit
+# them in the web UI (Interests, Feeds); changes to those lists here are ignored.
+
+db_path: radar.db
+
+# arXiv asks API clients to identify themselves; put a contact URL or email here.
+user_agent: "radar/0.1 (self-hosted reading recommender)"
+
+sources:
+  arxiv:
+    enabled: true
+    categories: [cs.LG, cs.CL, cs.DC]
+    # Newest submissions across all categories, one request per fetch.
+    # These three categories get several hundred new papers a day.
+    max_results: 300
+
+  hackernews:
+    enabled: true
+    min_points: 50
+    lookback: 48h
+    max_results: 200
+
+  # Every source also accepts `every`: the minimum time between fetches of
+  # that source, however often the fetch job runs (0 = every run).
+
+  rss:
+    enabled: true
+    # Skip posts older than this, so adding a feed doesn't import its archive.
+    max_age: 720h
+    # A bare URL, or {url, name, tags, type}. Tags are added to every post
+    # (they match interests exactly); type is article (default), news or paper.
+    feeds:
+      - https://jvns.ca/atom.xml
+      - https://danluu.com/atom.xml
+      - https://www.brendangregg.com/blog/rss.xml
+      - https://simonwillison.net/atom/everything/
+      - url: https://muratbuffalo.blogspot.com/feeds/posts/default
+        name: Metadata (Murat Demirbas)
+        tags: [distributed systems]
+      - url: https://jack-vanlightly.com/blog?format=rss
+        tags: [distributed systems]
+      - url: https://lilianweng.github.io/index.xml
+        tags: [large language models]
+
+  books:
+    enabled: true
+    every: 24h              # book catalogs change slowly
+    # New releases from these authors go in "New from authors you follow".
+    authors:
+      - Ted Chiang
+      - Martin Kleppmann
+    # Well-regarded books on these subjects compete for "Book of the week".
+    subjects:
+      - distributed systems
+      - science fiction
+    language: en
+    per_query: 20
+    # Optional: an API key raises Google's anonymous quota.
+    google_api_key_env: RADAR_GOOGLE_BOOKS_KEY
+    googlebooks: true
+    openlibrary: true
+
+scoring:
+  # score = keyword*kw + similarity*sim + recency*rec
+  weights:
+    keyword: 0.5
+    similarity: 0.3
+    recency: 0.2
+  # Recency halves every half_life, per item type.
+  half_life:
+    paper: 72h
+    article: 72h
+    news: 24h
+    book: 26280h   # 3 years: the book pick isn't about newness
+  # Items fetched within this window are rescored and digest-eligible.
+  window: 720h
+
+# Your interest profile. A bare string has weight 1.
+# Terms match whole words (multi-word phrases in order) in titles,
+# summaries and tags. Tags like arXiv categories match exactly: "cs.DC".
+# Negative weights push matching items down.
+interests:
+  - distributed systems
+  - consensus
+  - term: large language models
+    weight: 1.5
+  - term: retrieval
+    weight: 0.8
+  - term: cs.DC
+    weight: 0.5
+  - term: cryptocurrency
+    weight: -1
+
+digest:
+  # Max items per section; sections appear in this order. 0 omits a section.
+  sections:
+    paper: 8
+    article: 8
+    news: 8
+  min_score: 0.1
+  # Only items fetched within this window and never sent before.
+  lookback: 168h
+  # Weekly books block: one pick of the week plus new releases by followed
+  # authors. If that day's digest is missed, books go out in the next one.
+  books:
+    weekday: sunday         # "" = every digest
+    pick_of_week: true
+    new_releases: 5
+    new_release_window: 4320h   # 180 days
+
+email:
+  smtp_host: smtp.fastmail.com
+  smtp_port: 587
+  tls: starttls            # starttls (587) | tls (465) | none (local relay)
+  username: you@fastmail.com
+  # The password is read from this environment variable, never from this file.
+  password_env: RADAR_SMTP_PASSWORD
+  from: "Radar <you@fastmail.com>"
+  to: [you@fastmail.com]
+
+server:
+  addr: 127.0.0.1:8080
+  # Public URL of `radar serve`; 👍/👎 links in emails point here.
+  # Put it behind a reverse proxy with HTTPS, or a Tailscale address.
+  base_url: http://localhost:8080
+  # Web UI sign-in. The password is read from this env var. Until it's set,
+  # the UI shows setup instructions (feedback links work regardless).
+  password_env: RADAR_UI_PASSWORD
+  # "none" turns sign-in off, for networks that already control access
+  # (Tailscale, LAN-only, an authenticating reverse proxy).
+  ui_auth: password
+
+schedule:
+  fetch_every: 6h          # 0 disables; `radar serve` also fetches at startup
+  digest_at: "07:00"       # "" disables the daily digest
+  timezone: ""             # IANA name, e.g. Asia/Kathmandu; "" = server local time

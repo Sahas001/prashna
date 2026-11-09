@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <link href="http://arxiv.org/api/query?search_query%3Dcat%3Acs.DC&amp;id_list%3D&amp;start%3D0&amp;max_results%3D2" rel="self" type="application/atom+xml"/>
+  <title type="html">ArXiv Query: search_query=cat:cs.DC&amp;id_list=&amp;start=0&amp;max_results=2</title>
+  <id>http://arxiv.org/api/fixture</id>
+  <updated>2026-11-09T00:00:00-05:00</updated>
+  <opensearch:totalResults xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">2</opensearch:totalResults>
+  <entry>
+    <id>http://arxiv.org/abs/2611.01234v2</id>
+    <updated>2026-11-08T12:00:00Z</updated>
+    <published>2026-11-06T17:30:00Z</published>
+    <title>Leaderless Consensus for
+      Geo-Distributed   Key-Value Stores</title>
+    <summary>  We present a leaderless consensus protocol
+for geo-distributed key-value stores that reduces commit latency.
+</summary>
+    <author><name>Ada Lovelace</name></author>
+    <author><name>Leslie Lamport</name></author>
+    <arxiv:comment xmlns:arxiv="http://arxiv.org/schemas/atom">12 pages, 5 figures</arxiv:comment>
+    <link href="http://arxiv.org/abs/2611.01234v2" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2611.01234v2" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.DC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.DC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.DB" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2611.05678v1</id>
+    <updated>2026-11-07T09:00:00Z</updated>
+    <published>2026-11-07T09:00:00Z</published>
+    <title>Sparse Retrieval Heads in Large Language Models</title>
+    <summary>We identify sparse attention heads responsible for retrieval.</summary>
+    <author><name>Grace Hopper</name></author>
+    <arxiv:doi xmlns:arxiv="http://arxiv.org/schemas/atom">10.1234/example.5678</arxiv:doi>
+    <link href="http://arxiv.org/abs/2611.05678v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2611.05678v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+</feed>

@@ -1,0 +1,13 @@
+{{define "content"}}
+<div class="auth">
+  <img src="{{asset "icons/icon.svg"}}" alt="" width="56" height="56">
+  <h1>Radar</h1>
+  <form method="post" action="/login" class="auth-form">
+    <input type="hidden" name="next" value="{{.Next}}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+    <button type="submit" class="btn primary">Sign in</button>
+  </form>
+</div>
+{{end}}

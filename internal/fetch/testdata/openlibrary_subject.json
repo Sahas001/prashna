@@ -1,0 +1,18 @@
+{
+  "numFound": 2,
+  "docs": [
+    {
+      "key": "/works/OL17800000W",
+      "title": "Designing Data-Intensive Applications",
+      "author_name": ["Martin Kleppmann"],
+      "first_publish_year": 2017,
+      "cover_i": 8434231,
+      "subject": ["Distributed databases", "Accessible book", "Protected DAISY", "Database management", "nyt:non-fiction=2017"],
+      "want_to_read_count": 412
+    },
+    {
+      "key": "/works/OL1W",
+      "title": "Untitled work without authors"
+    }
+  ]
+}

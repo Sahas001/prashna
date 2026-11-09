@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Example &amp; Co Blog</title>
+    <atom:link href="https://blog.example.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <link>https://blog.example.com/</link>
+    <description>Posts</description>
+    <item>
+      <title>Notes on Raft&nbsp;snapshots</title>
+      <link>/posts/raft-snapshots/</link>
+      <guid isPermaLink="false">post-1</guid>
+      <pubDate>Fri, 06 Nov 2026 09:30:00 +0000</pubDate>
+      <dc:creator>Jane Doe</dc:creator>
+      <category>distributed systems</category>
+      <category>raft</category>
+      <description><![CDATA[<p>How <b>Raft</b> compacts its log &amp; why it matters.</p>]]></description>
+      <content:encoded><![CDATA[<p>Full post body that is much longer.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Content only, GUID permalink</title>
+      <guid>https://blog.example.com/posts/content-only</guid>
+      <pubDate>Thu, 5 Nov 2026 08:00:00 GMT</pubDate>
+      <author>jane@example.com (Jane Doe)</author>
+      <content:encoded>&lt;p&gt;Escaped &lt;i&gt;HTML&lt;/i&gt; body.&lt;/p&gt;</content:encoded>
+    </item>
+    <item>
+      <title>Ancient post</title>
+      <link>https://blog.example.com/posts/ancient</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>No link at all</title>
+      <guid isPermaLink="false">x</guid>
+    </item>
+  </channel>
+</rss>

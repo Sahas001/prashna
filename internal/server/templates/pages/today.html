@@ -1,0 +1,20 @@
+{{define "content"}}
+<div class="page-head">
+  <h1>Today</h1>
+  <p class="sub">The best things you haven't rated yet{{if ne .Type "book"}}, from the last {{.Days}} days{{end}}.</p>
+</div>
+<nav class="tabs" aria-label="Filter by type">
+  {{- range .Tabs}}<a href="{{.Href}}" class="tab"{{if .Active}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</nav>
+{{- if .Cards}}
+<div class="cards">
+  {{- range .Cards}}{{template "card" .}}{{end}}
+  {{template "more" .}}
+</div>
+{{- else}}
+<div class="empty">
+  <h2>You're all caught up</h2>
+  <p>Nothing unrated here yet. New items arrive with each fetch. You can also add <a href="/feeds">feeds</a> or <a href="/interests">interests</a>.</p>
+</div>
+{{- end}}
+{{end}}
