@@ -207,6 +207,29 @@ func (s *Scorer) Score(candidates, liked []item.Item, now time.Time) {
 	}
 }
 
+// Content is the heuristic's judgement of the item itself: the keyword and
+// similarity signals, weighted and normalized to [0, 1].
+func (s *Scorer) Content(sig item.Signals) float64 {
+	w := s.cfg.Weights
+	if w.Keyword+w.Similarity == 0 {
+		return 0
+	}
+	return (w.Keyword*sig.Keyword + w.Similarity*sig.Similarity) / (w.Keyword + w.Similarity)
+}
+
+// Blend mixes a learned like-probability p into an already scored item.
+// The model replaces a share alpha of the content part; recency keeps its
+// configured weight, so fresh items still rise. With alpha 0 the score is
+// unchanged:
+//
+//	total = (Wk+Ws)·((1-α)·content + α·p) + Wr·recency
+func (s *Scorer) Blend(it *item.Item, p float64, why []string, alpha float64) {
+	w := s.cfg.Weights
+	it.Signals.Learned, it.Signals.LearnedWhy = p, why
+	content := (1-alpha)*s.Content(it.Signals) + alpha*p
+	it.Score = (w.Keyword+w.Similarity)*content + w.Recency*it.Signals.Recency
+}
+
 // docTokens is the text an item is compared on. The title is repeated so
 // it outweighs a long abstract; tags are included verbatim-ish.
 func docTokens(it item.Item) []string {

@@ -84,7 +84,8 @@ const (
 	maxBylineAuthors    = 3
 	similarityThreshold = 0.15
 	popularHNPoints     = 300
-	popularOLReaders    = 100 // want-to-read count
+	popularOLReaders    = 100  // want-to-read count
+	learnedThreshold    = 0.65 // model like-probability worth mentioning
 )
 
 // Build picks up to Sections[type] unsent, unrated items per section,
@@ -215,6 +216,9 @@ func NewEntry(it item.Item, explain func(item.Item) []string) Entry {
 	}
 	if it.Signals.Similarity >= similarityThreshold {
 		why = append(why, "similar to items you liked")
+	}
+	if it.Signals.Learned >= learnedThreshold && len(it.Signals.LearnedWhy) > 0 {
+		why = append(why, "you tend to like "+strings.Join(it.Signals.LearnedWhy, ", "))
 	}
 	if p, _ := strconv.Atoi(it.Meta["hn_points"]); p >= popularHNPoints {
 		why = append(why, "popular on HN")

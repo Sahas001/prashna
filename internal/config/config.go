@@ -24,6 +24,17 @@ type Config struct {
 	Email     Email      `yaml:"email"`
 	Server    Server     `yaml:"server"`
 	Schedule  Schedule   `yaml:"schedule"`
+	Learning  Learning   `yaml:"learning"`
+}
+
+// Learning configures the ranking model trained on your 👍/👎.
+type Learning struct {
+	Enabled bool `yaml:"enabled"`
+	// MinRatings before the model is even evaluated (it also needs 5 of each).
+	MinRatings int `yaml:"min_ratings"`
+	// MaxWeight caps the model's share of the content score (keyword +
+	// similarity); recency keeps its own weight regardless.
+	MaxWeight float64 `yaml:"max_weight"`
 }
 
 type Digest struct {
@@ -335,6 +346,11 @@ func Default() Config {
 			FetchEvery: 6 * time.Hour,
 			DigestAt:   "07:00",
 		},
+		Learning: Learning{
+			Enabled:    true,
+			MinRatings: 20,
+			MaxWeight:  0.8,
+		},
 	}
 }
 
@@ -452,6 +468,12 @@ func (c Config) Validate() error {
 	}
 	if u, err := url.Parse(c.Server.BaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		errs = append(errs, fmt.Errorf("server.base_url %q must be an absolute http(s) URL", c.Server.BaseURL))
+	}
+	if c.Learning.MinRatings < 10 {
+		errs = append(errs, errors.New("learning.min_ratings must be at least 10"))
+	}
+	if c.Learning.MaxWeight <= 0 || c.Learning.MaxWeight > 1 {
+		errs = append(errs, errors.New("learning.max_weight must be in (0, 1]"))
 	}
 	if c.Server.UIAuth != "password" && c.Server.UIAuth != "none" {
 		errs = append(errs, fmt.Errorf("server.ui_auth %q: want password or none", c.Server.UIAuth))

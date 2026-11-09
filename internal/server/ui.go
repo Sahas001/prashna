@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"radar/internal/item"
+	"radar/internal/learn"
 	"radar/internal/links"
 	"radar/internal/store"
 )
@@ -283,9 +284,20 @@ type interestsPage struct {
 	Interests interestsData
 	Authors   followsData
 	Subjects  followsData
+	Model     *modelView
+}
+
+// modelView is the learned-ranking panel.
+type modelView struct {
+	learn.Report
+	Progress int // percent of the way to MinRatings, while collecting
 }
 
 const maxWeight = 3
+
+// minRatingsHint scales the "ratings so far" bar; the real threshold is
+// in the report's status text.
+const minRatingsHint = 20
 
 func parseWeight(s string) (float64, error) {
 	w, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
@@ -328,6 +340,15 @@ func (s *Server) interestsPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.serverError(w, "interests", err)
 		return
+	}
+	var rep learn.Report
+	if ok, err := s.Store.JSONSetting(r.Context(), learn.ReportKey, &rep); err != nil {
+		s.log().Error("load model report", "err", err)
+	} else if ok {
+		d.Model = &modelView{Report: rep}
+		if rep.ModelAUC == 0 && rep.Ratings < minRatingsHint {
+			d.Model.Progress = rep.Ratings * 100 / minRatingsHint
+		}
 	}
 	s.renderPage(w, r, http.StatusOK, "interests", "Interests", "interests", d)
 }

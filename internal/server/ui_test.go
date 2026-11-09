@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"radar/internal/item"
+	"radar/internal/learn"
 	"radar/internal/links"
 	"radar/internal/score"
 	"radar/internal/store"
@@ -413,3 +414,33 @@ func TestPWAAssets(t *testing.T) {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+func TestModelPanel(t *testing.T) {
+	e := newUI(t, Auth{Disabled: true})
+	c := e.client(t)
+	ctx := context.Background()
+
+	_, body := do(t, c, "GET", e.srv.URL+"/interests", nil, nil)
+	if strings.Contains(body, "Learned ranking") {
+		t.Error("panel shown before any report exists")
+	}
+
+	e.st.SetJSONSetting(ctx, learn.ReportKey, learn.Report{Ratings: 5, Status: "Rate 15 more items to start learning (5 of 20)."})
+	_, body = do(t, c, "GET", e.srv.URL+"/interests", nil, nil)
+	if !strings.Contains(body, "Rate 15 more") || !strings.Contains(body, `<progress class="meter" value="25"`) {
+		t.Errorf("collecting state: %s", body[strings.Index(body, "Learned"):][:600])
+	}
+
+	e.st.SetJSONSetting(ctx, learn.ReportKey, learn.Report{Ratings: 40, Liked: 25, Disliked: 15, ModelAUC: 0.83, BaselineAUC: 0.64,
+		Active: true, Weight: 0.53, Status: "Active: 53% of the content score",
+		TopLiked: []learn.Weight{{Label: "tag: cs.DC", Weight: 1.2}}, TopDisliked: []learn.Weight{{Label: "“benchmark”", Weight: -0.5}}})
+	_, body = do(t, c, "GET", e.srv.URL+"/interests", nil, nil)
+	for _, want := range []string{"model-status on", "0.83", "0.64", "tag: cs.DC", "“benchmark”", "You tend to skip"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("active state missing %q", want)
+		}
+	}
+	if strings.Contains(body, "<progress") {
+		t.Error("progress bar shown for an evaluated model")
+	}
+}

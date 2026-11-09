@@ -3,13 +3,16 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"radar/internal/fetch"
 	"radar/internal/item"
+	"radar/internal/learn"
 	"radar/internal/score"
 	"radar/internal/store"
 )
@@ -205,4 +208,71 @@ func (c *countingFetcher) Name() string { return c.name }
 func (c *countingFetcher) Fetch(context.Context) ([]item.Item, error) {
 	c.calls.Add(1)
 	return nil, nil
+}
+
+func TestLearnedRanking(t *testing.T) {
+	ctx := context.Background()
+	var items []item.Item
+	// 30 rated items: the user likes posts from one feed, dislikes another,
+	// regardless of topic. The keyword profile ("consensus") can't see that.
+	for i := range 30 {
+		feed, topic := "Good Blog", []string{"consensus", "storage", "compilers"}[i%3]
+		if i%2 == 1 {
+			feed = "Hype Blog"
+		}
+		items = append(items, item.Item{Type: item.TypeArticle, Source: "rss", Published: now,
+			Title: fmt.Sprintf("Post %d about %s", i, topic), URL: fmt.Sprintf("https://blog.example/%d", i),
+			Meta: map[string]string{"feed": feed}})
+	}
+	// Two unrated items: the keyword match comes from the disliked feed.
+	items = append(items,
+		item.Item{Type: item.TypeArticle, Source: "rss", Published: now, Title: "New consensus protocol", URL: "https://blog.example/new-hype", Meta: map[string]string{"feed": "Hype Blog"}},
+		item.Item{Type: item.TypeArticle, Source: "rss", Published: now, Title: "New storage engine", URL: "https://blog.example/new-good", Meta: map[string]string{"feed": "Good Blog"}},
+	)
+	p := newPipeline(t, fakeFetcher{name: "rss", items: items})
+	if _, err := p.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 30 {
+		fb := item.Liked
+		if i%2 == 1 {
+			fb = item.Disliked
+		}
+		if _, err := p.Store.SetFeedback(ctx, item.IDFor(fmt.Sprintf("https://blog.example/%d", i)), fb); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rank := func() (hype, good item.Item) {
+		t.Helper()
+		if _, err := p.Rescore(ctx); err != nil {
+			t.Fatal(err)
+		}
+		hype, _ = p.Store.Get(ctx, item.IDFor("https://blog.example/new-hype"))
+		good, _ = p.Store.Get(ctx, item.IDFor("https://blog.example/new-good"))
+		return hype, good
+	}
+
+	hype, good := rank() // Learning zero value: disabled
+	if hype.Score <= good.Score || hype.Signals.Learned != 0 {
+		t.Fatalf("without learning the keyword match should win: hype=%.3f good=%.3f", hype.Score, good.Score)
+	}
+	var report learn.Report
+	if ok, _ := p.Store.JSONSetting(ctx, learn.ReportKey, &report); !ok || report.Active || report.Ratings != 30 {
+		t.Errorf("disabled report = %+v", report)
+	}
+
+	p.Learning = learn.Config{Enabled: true}
+	hype, good = rank()
+	if good.Score <= hype.Score {
+		t.Errorf("learned taste should outrank the keyword match: hype=%.3f (p=%.2f) good=%.3f (p=%.2f)",
+			hype.Score, hype.Signals.Learned, good.Score, good.Signals.Learned)
+	}
+	if !slices.Contains(good.Signals.LearnedWhy, "Good Blog") {
+		t.Errorf("learned why = %v", good.Signals.LearnedWhy)
+	}
+	p.Store.JSONSetting(ctx, learn.ReportKey, &report)
+	if !report.Active || report.ModelAUC <= report.BaselineAUC || report.Weight <= 0 {
+		t.Errorf("active report = %+v", report)
+	}
 }

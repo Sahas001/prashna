@@ -4,6 +4,7 @@
   <p class="sub">What Radar looks for. Changes re-rank everything right away.</p>
 </div>
 {{template "interests" .Interests}}
+{{- if .Model}}{{template "model" .Model}}{{end}}
 {{template "follows" .Authors}}
 {{template "follows" .Subjects}}
 {{end}}

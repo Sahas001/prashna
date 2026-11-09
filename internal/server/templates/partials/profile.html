@@ -107,3 +107,32 @@
   {{- end}}
 </section>
 {{end}}
+
+{{define "model"}}
+<section id="model" class="panel">
+  <div class="panel-head">
+    <h2>Learned ranking</h2>
+    <p class="hint">Radar learns from your 👍 and 👎. Once it ranks your past ratings better than the interest list alone, it starts re-ranking everything.</p>
+  </div>
+  <p class="model-status{{if .Active}} on{{end}}">{{.Status}}</p>
+  {{- if .Progress}}
+  <progress class="meter" value="{{.Progress}}" max="100" aria-label="Ratings collected">{{.Progress}}%</progress>
+  {{- end}}
+  {{- if .ModelAUC}}
+  <dl class="model-stats">
+    <div><dt>Ratings</dt><dd>{{.Ratings}} <span class="muted">({{.Liked}} 👍 · {{.Disliked}} 👎)</span></dd></div>
+    <div><dt>Learned model</dt><dd>{{printf "%.2f" .ModelAUC}}</dd></div>
+    <div><dt>Interests alone</dt><dd>{{printf "%.2f" .BaselineAUC}}</dd></div>
+  </dl>
+  <p class="hint">Scores are cross-validated AUC: how often a liked item ranks above a disliked one. 0.5 is a coin flip, 1.0 is perfect.</p>
+  {{- if .TopLiked}}
+  <h3 class="mini">You tend to like</h3>
+  <ul class="chips">{{range .TopLiked}}<li class="chip learned up">{{.Label}}</li>{{end}}</ul>
+  {{- end}}
+  {{- if .TopDisliked}}
+  <h3 class="mini">You tend to skip</h3>
+  <ul class="chips">{{range .TopDisliked}}<li class="chip learned down">{{.Label}}</li>{{end}}</ul>
+  {{- end}}
+  {{- end}}
+</section>
+{{end}}

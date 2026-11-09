@@ -64,6 +64,11 @@ type Signals struct {
 	Keyword    float64
 	Similarity float64
 	Recency    float64
+	// Learned is the feedback-trained model's probability that the user
+	// likes the item (0 when no model is active); LearnedWhy lists the
+	// features that raised it most.
+	Learned    float64
+	LearnedWhy []string
 }
 
 // Item is one recommendable piece of content.

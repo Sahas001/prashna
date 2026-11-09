@@ -118,3 +118,20 @@ func TestAuthorMatches(t *testing.T) {
 		t.Errorf("author interest not matched: kw=%v terms=%v", s.Keyword(book), s.MatchedTerms(book))
 	}
 }
+
+func TestBlend(t *testing.T) {
+	s := New(Config{Weights: Weights{Keyword: 0.5, Similarity: 0.3, Recency: 0.2}})
+	it := item.Item{Signals: item.Signals{Keyword: 0.8, Similarity: 0.4, Recency: 0.5}}
+	heuristic := 0.5*0.8 + 0.3*0.4 + 0.2*0.5
+	if c := s.Content(it.Signals); math.Abs(c-(0.5*0.8+0.3*0.4)/0.8) > 1e-9 {
+		t.Errorf("content = %v", c)
+	}
+	s.Blend(&it, 0.9, []string{"raft"}, 0)
+	if math.Abs(it.Score-heuristic) > 1e-9 {
+		t.Errorf("alpha 0 changed the score: %v vs %v", it.Score, heuristic)
+	}
+	s.Blend(&it, 0.9, []string{"raft"}, 1)
+	if want := 0.8*0.9 + 0.2*0.5; math.Abs(it.Score-want) > 1e-9 || it.Signals.Learned != 0.9 || it.Signals.LearnedWhy[0] != "raft" {
+		t.Errorf("alpha 1: score %v want %v, signals %+v", it.Score, want, it.Signals)
+	}
+}

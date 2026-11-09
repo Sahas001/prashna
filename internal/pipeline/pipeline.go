@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
 	"radar/internal/fetch"
 	"radar/internal/item"
+	"radar/internal/learn"
 	"radar/internal/score"
 	"radar/internal/store"
 )
@@ -26,8 +28,10 @@ type Pipeline struct {
 	// name (e.g. books daily while feeds run every few hours). Force ignores it.
 	Intervals map[string]time.Duration
 	Force     bool
-	Log       *slog.Logger
-	Now       func() time.Time
+	// Learning configures the feedback-trained model; zero disables it.
+	Learning learn.Config
+	Log      *slog.Logger
+	Now      func() time.Time
 }
 
 type Stats struct {
@@ -154,10 +158,14 @@ func (p *Pipeline) Run(ctx context.Context) (Stats, error) {
 	return st, errors.Join(errs...)
 }
 
+// learnedReasons is how many features a learned "why" lists.
+const learnedReasons = 3
+
 // Rescore recomputes scores for every item in the window (plus unsent
-// books, see store.ItemsForScoring). Scores depend on the whole liked set
-// (similarity) and on the clock (recency), so they are recomputed
-// wholesale rather than incrementally.
+// books, see store.ItemsForScoring, and every rated item, which the
+// learned model trains on). Scores depend on the whole liked set
+// (similarity), on all ratings (the learned model) and on the clock
+// (recency), so they are recomputed wholesale rather than incrementally.
 func (p *Pipeline) Rescore(ctx context.Context) (int, error) {
 	now := p.now()
 	cands, err := p.Store.ItemsForScoring(ctx, now.Add(-p.Window))
@@ -168,11 +176,51 @@ func (p *Pipeline) Rescore(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	disliked, err := p.Store.ItemsWithFeedback(ctx, item.Disliked)
+	if err != nil {
+		return 0, err
+	}
+	seen := make(map[string]bool, len(cands))
+	for _, it := range cands {
+		seen[it.ID] = true
+	}
+	for _, it := range slices.Concat(liked, disliked) {
+		if !seen[it.ID] {
+			seen[it.ID] = true
+			cands = append(cands, it)
+		}
+	}
+
 	p.Scorer.Score(cands, liked, now)
+	if err := p.applyModel(ctx, cands, now); err != nil {
+		return 0, err
+	}
 	if err := p.Store.UpdateScores(ctx, cands); err != nil {
 		return 0, err
 	}
 	return len(cands), nil
+}
+
+// applyModel trains on the rated items among scored and, if the model
+// beats the built-in score in cross-validation, blends it into every score.
+// The training report is saved either way.
+func (p *Pipeline) applyModel(ctx context.Context, scored []item.Item, now time.Time) error {
+	var examples []learn.Example
+	var baseline []float64
+	for _, it := range scored {
+		if it.Feedback != item.Neutral {
+			examples = append(examples, learn.Example{Features: learn.Extract(it), Liked: it.Feedback == item.Liked})
+			baseline = append(baseline, p.Scorer.Content(it.Signals))
+		}
+	}
+	model, report := learn.Fit(examples, baseline, p.Learning, now)
+	if model != nil {
+		for i := range scored {
+			fs := learn.Extract(scored[i])
+			p.Scorer.Blend(&scored[i], model.Predict(fs), model.Explain(fs, learnedReasons), report.Weight)
+		}
+	}
+	return p.Store.SetJSONSetting(ctx, learn.ReportKey, report)
 }
 
 // Dedupe collapses items within one batch that share an ID (same canonical

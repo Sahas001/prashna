@@ -94,7 +94,7 @@ func (s *Store) migrate(ctx context.Context) error {
 }
 
 const itemCols = `id, type, title, url, source, summary, authors, tags, meta,
-	published, fetched_at, score, sig_keyword, sig_similarity, sig_recency, feedback, saved_at, read_at`
+	published, fetched_at, score, sig_keyword, sig_similarity, sig_recency, feedback, saved_at, read_at, sig_learned, learned_why`
 
 type scanner interface{ Scan(dest ...any) error }
 
@@ -106,10 +106,11 @@ func scanItem(row scanner) (item.Item, error) {
 		typ                  string
 		feedback             int
 		savedAt, readAt      sql.NullInt64
+		learnedWhy           string
 	)
 	err := row.Scan(&it.ID, &typ, &it.Title, &it.URL, &it.Source, &it.Summary, &authors, &tags, &meta,
 		&published, &fetchedAt, &it.Score, &it.Signals.Keyword, &it.Signals.Similarity, &it.Signals.Recency, &feedback,
-		&savedAt, &readAt)
+		&savedAt, &readAt, &it.Signals.Learned, &learnedWhy)
 	if err != nil {
 		return it, err
 	}
@@ -126,7 +127,7 @@ func scanItem(row scanner) (item.Item, error) {
 	for _, f := range []struct {
 		src string
 		dst any
-	}{{authors, &it.Authors}, {tags, &it.Tags}, {meta, &it.Meta}} {
+	}{{authors, &it.Authors}, {tags, &it.Tags}, {meta, &it.Meta}, {learnedWhy, &it.Signals.LearnedWhy}} {
 		if err := json.Unmarshal([]byte(f.src), f.dst); err != nil {
 			return it, fmt.Errorf("item %s: decode json column: %w", it.ID, err)
 		}
@@ -232,13 +233,14 @@ func (s *Store) UpdateScores(ctx context.Context, items []item.Item) error {
 	}
 	defer tx.Rollback()
 	stmt, err := tx.PrepareContext(ctx,
-		`UPDATE items SET score = ?, sig_keyword = ?, sig_similarity = ?, sig_recency = ? WHERE id = ?`)
+		`UPDATE items SET score = ?, sig_keyword = ?, sig_similarity = ?, sig_recency = ?, sig_learned = ?, learned_why = ? WHERE id = ?`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	for _, it := range items {
-		if _, err := stmt.ExecContext(ctx, it.Score, it.Signals.Keyword, it.Signals.Similarity, it.Signals.Recency, it.ID); err != nil {
+		if _, err := stmt.ExecContext(ctx, it.Score, it.Signals.Keyword, it.Signals.Similarity, it.Signals.Recency,
+			it.Signals.Learned, jsonOf(it.Signals.LearnedWhy), it.ID); err != nil {
 			return fmt.Errorf("update score %s: %w", it.ID, err)
 		}
 	}

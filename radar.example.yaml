@@ -79,6 +79,15 @@ scoring:
   # Items fetched within this window are rescored and digest-eligible.
   window: 720h
 
+# Learned ranking: a model trained on your 👍/👎 (see `radar model`).
+# It is evaluated against the interest list by cross-validation and only
+# used when it ranks your past ratings better; its share then grows with
+# the number of ratings, up to max_weight of the content score.
+learning:
+  enabled: true
+  min_ratings: 20     # it also needs 5 👍 and 5 👎
+  max_weight: 0.8
+
 # Your interest profile. A bare string has weight 1.
 # Terms match whole words (multi-word phrases in order) in titles,
 # summaries and tags. Tags like arXiv categories match exactly: "cs.DC".

@@ -16,6 +16,7 @@ import (
 
 	"radar/internal/config"
 	"radar/internal/item"
+	"radar/internal/learn"
 	"radar/internal/pipeline"
 	"radar/internal/score"
 	"radar/internal/store"
@@ -32,6 +33,7 @@ Commands:
   digest     email a digest of the best unsent items (-preview / -text to just look)
   top        print the highest-scoring unrated items
   feedback   rate an item: radar feedback <id> up|down|clear
+  model      show what the ranking model has learned from your ratings
   rescore    recompute scores (after editing interests)
 
 Run 'radar <command> -h' for command flags.
@@ -125,6 +127,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return a.feedback(ctx, cmdArgs)
 	case "rescore":
 		return a.rescore(ctx)
+	case "model":
+		return a.model(ctx)
 	default:
 		fs.Usage()
 		return fmt.Errorf("unknown command %q", cmd)
@@ -154,11 +158,13 @@ func (a *app) pipeline(ctx context.Context) (*pipeline.Pipeline, error) {
 	if err != nil {
 		return nil, err
 	}
+	l := a.cfg.Learning
 	return &pipeline.Pipeline{
-		Store:  a.store,
-		Scorer: sc,
-		Window: a.cfg.Scoring.Window,
-		Log:    a.log,
+		Store:    a.store,
+		Scorer:   sc,
+		Window:   a.cfg.Scoring.Window,
+		Learning: learn.Config{Enabled: l.Enabled, MinRatings: l.MinRatings, MaxWeight: l.MaxWeight},
+		Log:      a.log,
 	}, nil
 }
 

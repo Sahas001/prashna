@@ -11,6 +11,7 @@ go build -o radar ./cmd/radar
 ./radar top -explain               # best unrated items, with score breakdown
 ./radar feedback 27615b26 up       # 👍 (id prefix ok); rescoring happens automatically
 ./radar digest -preview out.html   # render the email without sending it (-books adds the weekly books block)
+./radar model                      # what the ranking model has learned from your ratings
 ```
 
 To run it for real, fill in the `email` and `server` sections, then:
@@ -40,6 +41,7 @@ internal/fetch/       Fetcher interface + HTTP client (UA, retries, backoff)
   books.go            Google Books + Open Library: followed authors, subjects
 internal/pipeline/    fetch (concurrent) -> normalize -> dedupe -> save -> rescore
 internal/score/       keyword, TF-IDF similarity, recency
+internal/learn/       logistic regression on 👍/👎: features, training, cross-validation
 internal/store/       SQLite store + numbered migrations (PRAGMA user_version)
 internal/digest/      section selection + HTML/text email templates
 internal/mail/        MIME multipart/alternative + SMTP (STARTTLS / TLS / none)
@@ -62,6 +64,26 @@ internal/config/      YAML config overlaid on defaults
 - **recency**: `0.5^(age / half_life)`, with a half-life set per type.
 
 `score = 0.5·keyword + 0.3·similarity + 0.2·recency`. Every item in the window is rescored after each fetch and after each piece of feedback. Signals are stored per item so a digest can explain its picks.
+
+**Learned ranking.** Your 👍/👎 train a logistic regression with L2 regularization. Features are hashed and include:
+- the keyword and similarity signals;
+- title and summary words;
+- tags, authors, source, feed and domain;
+- HN and Open Library popularity.
+
+Recency is left out on purpose. You rate items while they're fresh, so recency at training time says nothing about taste.
+
+Each rescore retrains on all your ratings. Training is deterministic, and with 1,000 ratings it takes about 90 ms, so it's cheap enough to run on every click.
+
+The model only switches on when it has enough evidence:
+- at least 20 ratings, including at least 5 likes and 5 dislikes;
+- and 5-fold cross-validation shows it ranks your past ratings better (higher AUC) than the keyword and similarity score alone.
+
+Once on, it replaces a growing share of that content part: `0.8·n/(n+20)` with n ratings. Recency keeps its own weight:
+
+`score = 0.8·((1−α)·content + α·p(like)) + 0.2·recency`
+
+Cards and emails then say "you tend to like cs.DC, Jane's Blog", naming the features that raised that item most. `radar model` and the Interests page show the cross-validated AUC of the model and of the interest list, how much the model trusts each built-in signal, and the features you tend to like or skip.
 
 **Digest.** Each section (papers, articles, discussions) gets the highest-scoring items that haven't been sent or rated yet. Items are marked as sent only after the SMTP server accepts the message, so a failed send retries the same items next time. Every entry says why it was picked, for example "matches large language models", "similar to items you liked" or "popular on HN".
 
@@ -98,5 +120,5 @@ Interests, feeds and book follows live in SQLite. The config file only seeds the
 2. ~~RSS/Atom fetcher, Open Library + Google Books fetchers, weekly book pick and followed-author releases~~
 3. ~~Email digest (SMTP) with signed 👍/👎 links, `radar serve` feedback endpoint, in-process scheduler~~
 4. ~~Web UI (Go templates + htmx, PWA): history, reading list, manage interests/feeds; profile moves into SQLite~~
-5. Learned ranking: Naive Bayes / logistic regression on feedback, replacing the fixed weights
+5. ~~Learned ranking: logistic regression on feedback, gated by cross-validation~~
 6. TUI client

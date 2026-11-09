@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
@@ -24,6 +25,24 @@ func (s *Store) SetSetting(ctx context.Context, key, value string) error {
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value`, key, value)
 	return err
+}
+
+// JSONSetting decodes a setting stored with SetJSONSetting into v. It
+// reports false (leaving v alone) if the setting is unset.
+func (s *Store) JSONSetting(ctx context.Context, key string, v any) (bool, error) {
+	raw, err := s.Setting(ctx, key)
+	if err != nil || raw == "" {
+		return false, err
+	}
+	return true, json.Unmarshal([]byte(raw), v)
+}
+
+func (s *Store) SetJSONSetting(ctx context.Context, key string, v any) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return s.SetSetting(ctx, key, string(b))
 }
 
 // TimeSetting reads a setting stored with SetTimeSetting (zero if unset).
