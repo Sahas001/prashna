@@ -1,46 +1,73 @@
 {{define "layout"}}<!doctype html>
-<html lang="en">
+<html lang="en"{{if .Theme}} data-theme="{{.Theme}}"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#161a18" media="(prefers-color-scheme: dark)">
+{{- if eq .Theme "light"}}
+<meta name="theme-color" content="#f6f2ea">
+{{- else if eq .Theme "dark"}}
+<meta name="theme-color" content="#16140f">
+{{- else}}
+<meta name="theme-color" content="#f6f2ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)">
+{{- end}}
 <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0}'>
 <meta name="robots" content="noindex">
-<title>{{.Title}} · Radar</title>
+<title>{{if .Title}}{{.Title}} · {{end}}Radar</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="{{asset "icons/icon.svg"}}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{{asset "icons/icon-192.png"}}">
+<link rel="preload" href="{{asset "fonts/literata-opsz-normal.woff2"}}" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{asset "app.css"}}">
 <script src="{{asset "htmx.min.js"}}" defer></script>
 <script src="{{asset "app.js"}}" defer></script>
 </head>
-<body hx-boost="true"{{if .ShowNav}} class="has-nav"{{end}}>
-{{- if .ShowNav}}
-<header class="top">
-  <div class="top-inner">
-    <a class="brand" href="/"><img src="{{asset "icons/icon.svg"}}" alt="" width="28" height="28"><span>Radar</span></a>
-    <nav class="nav" aria-label="Main">
-      <a href="/"{{if eq .Nav "today"}} aria-current="page"{{end}}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" class="fill"/></svg><span>Today</span></a>
-      <a href="/saved"{{if eq .Nav "saved"}} aria-current="page"{{end}}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a1 1 0 0 1 1 1V21l-6-4-6 4V4.5a1 1 0 0 1 1-1z"/></svg><span>Reading list</span><b id="unread-badge" class="count">{{if .Unread}}{{.Unread}}{{end}}</b></a>
-      <a href="/history"{{if eq .Nav "history"}} aria-current="page"{{end}}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span></a>
-      <a href="/interests"{{if eq .Nav "interests"}} aria-current="page"{{end}}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Interests</span></a>
-      <a href="/feeds"{{if eq .Nav "feeds"}} aria-current="page"{{end}}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5a14 14 0 0 1 14 14M5 11a8 8 0 0 1 8 8"/><circle cx="6" cy="18" r="1.4" class="fill"/></svg><span>Feeds</span></a>
+<body hx-boost="true" class="{{if .Bare}}bare{{else}}with-nav{{end}}">
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6.5 3.75h11a.75.75 0 0 1 .75.75v16.2l-6.25-4.2-6.25 4.2V4.5a.75.75 0 0 1 .75-.75z"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M7.5 10.5v9.75H4.25V10.5zM7.5 10.5l3.6-6.6a1.9 1.9 0 0 1 3.4 1.6l-.9 3.75h5.35a1.9 1.9 0 0 1 1.85 2.3l-1.35 6.95a1.9 1.9 0 0 1-1.86 1.5H7.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M16.5 13.5V3.75h3.25v9.75zM16.5 13.5l-3.6 6.6a1.9 1.9 0 0 1-3.4-1.6l.9-3.75H5.05a1.9 1.9 0 0 1-1.85-2.3L4.55 5.5a1.9 1.9 0 0 1 1.86-1.5h10.09"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.75" cy="10.75" r="6.5"/><path d="M15.5 15.5l4.75 4.75"/></symbol>
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M4.75 5.75h14.5v13.5H4.75zM8 3.5v4M16 3.5v4M4.75 10h14.5"/></symbol>
+  <symbol id="i-explore" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.25"/><path d="M15.25 8.75l-2 4.5-4.5 2 2-4.5z"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M5 4.25h3.5v15.5H5zM10.25 4.25h3.5v15.5h-3.5zM15.6 5.1l3.3-1 4 14.85-3.3 1z"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 5.25h16v3.5H4zM5.5 8.75v10h13v-10M9.75 12.25h4.5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M4.5 7h15M4.5 12h15M4.5 17h15"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4.5 7.5h9M17.5 7.5h2M4.5 16.5h2M10.5 16.5h9"/><circle cx="15.5" cy="7.5" r="2"/><circle cx="8.5" cy="16.5" r="2"/></symbol>
+</svg>
+{{- if not .Bare}}
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="wordmark" href="/">Radar</a>
+    <nav class="primary" aria-label="Main">
+      <a href="/"{{if eq .Nav "today"}} aria-current="page"{{end}}>Today</a>
+      <a href="/explore"{{if eq .Nav "explore"}} aria-current="page"{{end}}>Explore</a>
+      <a href="/library"{{if eq .Nav "library"}} aria-current="page"{{end}}>Library<span class="count library-count">{{if .ToRead}}{{.ToRead}}{{end}}</span></a>
+      <a href="/archive"{{if eq .Nav "archive"}} aria-current="page"{{end}}>Archive</a>
     </nav>
-    {{- if .CanOut}}
-    <form method="post" action="/logout" class="signout"><button type="submit" class="link">Sign out</button></form>
-    {{- end}}
+    <nav class="tools" aria-label="Tools">
+      <a href="/search" class="tool-search{{if eq .Nav "search"}} on{{end}}" aria-label="Search"><svg class="i"><use href="#i-search"/></svg></a>
+      <a href="/interests"{{if eq .Nav "interests"}} aria-current="page"{{end}}>Interests</a>
+      <a href="/feeds"{{if eq .Nav "feeds"}} aria-current="page"{{end}}>Feeds</a>
+      <a href="/settings"{{if eq .Nav "settings"}} aria-current="page"{{end}}>Settings</a>
+    </nav>
   </div>
 </header>
 {{- end}}
-<main class="wrap">
+<main id="main" class="page{{if .Bare}} page-bare{{end}}">
 {{template "content" .Data}}
 </main>
+{{- if not .Bare}}
+<nav class="tabbar" aria-label="Main">
+  <a href="/"{{if eq .Nav "today"}} aria-current="page"{{end}}><svg class="i"><use href="#i-today"/></svg>Today</a>
+  <a href="/explore"{{if eq .Nav "explore"}} aria-current="page"{{end}}><svg class="i"><use href="#i-explore"/></svg>Explore</a>
+  <a href="/library"{{if eq .Nav "library"}} aria-current="page"{{end}}><svg class="i"><use href="#i-library"/></svg>Library<span class="count library-count">{{if .ToRead}}{{.ToRead}}{{end}}</span></a>
+  <a href="/search"{{if eq .Nav "search"}} aria-current="page"{{end}}><svg class="i"><use href="#i-search"/></svg>Search</a>
+  <a href="/more"{{if or (eq .Nav "more") (eq .Nav "archive") (eq .Nav "interests") (eq .Nav "feeds") (eq .Nav "settings")}} aria-current="page"{{end}}><svg class="i"><use href="#i-more"/></svg>More</a>
+</nav>
+{{- end}}
 <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

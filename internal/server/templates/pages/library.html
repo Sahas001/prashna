@@ -1,0 +1,15 @@
+{{define "content"}}
+<header class="page-head">
+  <h1>Library</h1>
+  <p class="dek">What you’ve saved, loved and read, kept on this computer.</p>
+</header>
+<nav class="tabs" aria-label="Shelves">
+  {{- range .Tabs}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}{{if .Count}} <span class="tab-count">{{.Count}}</span>{{end}}</a>{{end}}
+</nav>
+{{- if .Cards}}
+<div class="stories">{{range .Cards}}{{template "story" .}}{{end}}</div>
+{{- if .Next}}<a class="more" href="{{.Next}}">Older</a>{{end}}
+{{- else}}
+<p class="quiet empty">{{.Empty}}</p>
+{{- end}}
+{{end}}

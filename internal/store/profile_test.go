@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 func TestInterests(t *testing.T) {
@@ -146,21 +146,6 @@ func TestReadingListAndHistory(t *testing.T) {
 	}
 
 	s.SetFeedback(ctx, items[2].ID, item.Liked)
-	id, err := s.RecordDigest(ctx, "Radar · test", []string{items[2].ID, items[0].ID}, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ds, err := s.Digests(ctx, 10, 0)
-	if err != nil || len(ds) != 1 || ds[0].Items != 2 || ds[0].Liked != 1 || ds[0].Disliked != 0 {
-		t.Fatalf("digests = %+v, %v", ds, err)
-	}
-	d, its, err := s.Digest(ctx, id)
-	if err != nil || d.Subject != "Radar · test" || len(its) != 2 || its[0].ID != items[2].ID {
-		t.Errorf("digest = %+v %v %v", d, its, err)
-	}
-	if _, _, err := s.Digest(ctx, 999); !errors.Is(err, ErrNotFound) {
-		t.Errorf("missing digest = %v", err)
-	}
 	liked, _ := s.RatedItems(ctx, item.Liked, 10, 0)
 	if len(liked) != 1 || liked[0].ID != items[2].ID {
 		t.Errorf("liked = %+v", liked)

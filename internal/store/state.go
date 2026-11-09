@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 // Setting returns a value from the settings table ("" if unset).

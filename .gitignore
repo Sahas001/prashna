@@ -1,5 +1,9 @@
 /radar
+/radar.exe
+/dist/
 *.db
 *.db-shm
 *.db-wal
 radar.yaml
+config.yaml
+/.claude/

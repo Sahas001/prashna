@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 func TestAUC(t *testing.T) {

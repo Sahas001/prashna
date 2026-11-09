@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 type Weights struct {

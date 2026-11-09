@@ -1,0 +1,17 @@
+{{define "content"}}
+<header class="page-head">
+  <h1>Explore</h1>
+  <p class="dek">Everything recent, best first. Today’s edition is a short pick from here.</p>
+</header>
+<nav class="tabs" aria-label="Filter">
+  {{- range .Tabs}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</nav>
+{{- if .Cards}}
+<div class="stories">
+  {{- range .Cards}}{{template "story" .}}{{end}}
+  {{template "explore-more" .}}
+</div>
+{{- else}}
+<p class="quiet empty">Nothing unread here{{if eq .Type "book"}}{{else}} from the last {{.Days}} days{{end}}. New things arrive with each check.</p>
+{{- end}}
+{{end}}

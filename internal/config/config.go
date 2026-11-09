@@ -1,163 +1,41 @@
-// Package config loads Radar's YAML configuration.
+// Package config holds Radar's settings. Everything has a working
+// default: a fresh install needs no config file at all. The settings
+// people change day to day (sources, edition size, learning) are edited in
+// the app and stored in the database (see Settings); config.yaml in the
+// data folder is only for less common knobs.
 package config
 
 import (
 	"errors"
 	"fmt"
-	"net/url"
+	"net"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 type Config struct {
-	DBPath    string     `yaml:"db_path"`
-	UserAgent string     `yaml:"user_agent"`
-	Sources   Sources    `yaml:"sources"`
-	Scoring   Scoring    `yaml:"scoring"`
-	Interests []Interest `yaml:"interests"`
-	Digest    Digest     `yaml:"digest"`
-	Email     Email      `yaml:"email"`
-	Server    Server     `yaml:"server"`
-	Schedule  Schedule   `yaml:"schedule"`
-	Learning  Learning   `yaml:"learning"`
-}
-
-// Learning configures the ranking model trained on your 👍/👎.
-type Learning struct {
-	Enabled bool `yaml:"enabled"`
-	// MinRatings before the model is even evaluated (it also needs 5 of each).
-	MinRatings int `yaml:"min_ratings"`
-	// MaxWeight caps the model's share of the content score (keyword +
-	// similarity); recency keeps its own weight regardless.
-	MaxWeight float64 `yaml:"max_weight"`
-}
-
-type Digest struct {
-	// Sections maps item type to the max items shown in that section.
-	// Sections render in fixed order (paper, article, news); a type that is
-	// missing or 0 is left out. Books have their own weekly block below.
-	Sections map[string]int `yaml:"sections"`
-	MinScore float64        `yaml:"min_score"`
-	// Lookback limits a digest to items fetched this recently that have
-	// not been in a previous digest.
-	Lookback time.Duration `yaml:"lookback"`
-	Books    DigestBooks   `yaml:"books"`
-}
-
-// DigestBooks configures the weekly books block: one "pick of the week"
-// plus recent releases by followed authors.
-type DigestBooks struct {
-	// Weekday the books block appears on ("sunday"); "" = every digest.
-	// If that day's digest is missed, books go out in the next one.
-	Weekday          string        `yaml:"weekday"`
-	PickOfWeek       bool          `yaml:"pick_of_week"`
-	NewReleases      int           `yaml:"new_releases"`       // max new releases shown; 0 = none
-	NewReleaseWindow time.Duration `yaml:"new_release_window"` // "new" = published within this window
-}
-
-// ParseWeekday returns the configured weekday; ok is false for "" (every digest).
-func (b DigestBooks) ParseWeekday() (time.Weekday, bool, error) {
-	if b.Weekday == "" {
-		return 0, false, nil
-	}
-	for d := time.Sunday; d <= time.Saturday; d++ {
-		name := strings.ToLower(d.String())
-		if w := strings.ToLower(b.Weekday); w == name || w == name[:3] {
-			return d, true, nil
-		}
-	}
-	return 0, false, fmt.Errorf("digest.books.weekday %q: want a day name like sunday", b.Weekday)
-}
-
-type Email struct {
-	SMTPHost string `yaml:"smtp_host"`
-	SMTPPort int    `yaml:"smtp_port"`
-	// TLS is "starttls" (port 587), "tls" (implicit TLS, port 465) or
-	// "none" (local relay only).
-	TLS      string `yaml:"tls"`
-	Username string `yaml:"username"`
-	// PasswordEnv names the environment variable holding the SMTP
-	// password, so the secret never lives in the config file.
-	PasswordEnv string   `yaml:"password_env"`
-	From        string   `yaml:"from"`
-	To          []string `yaml:"to"`
-}
-
-type Server struct {
-	Addr string `yaml:"addr"`
-	// BaseURL is the externally reachable URL of `radar serve`; feedback
-	// links in emails point here.
-	BaseURL string `yaml:"base_url"`
-	// UIAuth is "password" (default) or "none" for networks that already
-	// restrict access (Tailscale, LAN, an authenticating proxy).
-	UIAuth string `yaml:"ui_auth"`
-	// PasswordEnv names the env var holding the web UI password.
+	DBPath     string        `yaml:"db_path"` // default: <data folder>/radar.db
+	UserAgent  string        `yaml:"user_agent"`
+	Addr       string        `yaml:"addr"`        // where the app listens
+	FetchEvery time.Duration `yaml:"fetch_every"` // how often sources are checked while Radar runs
+	Sources    Sources       `yaml:"sources"`
+	Scoring    Scoring       `yaml:"scoring"`
+	Edition    Edition       `yaml:"edition"`
+	Learning   Learning      `yaml:"learning"`
+	// PasswordEnv names an env var holding a password for the web UI. It is
+	// only needed when Radar listens beyond this computer (Addr not on
+	// localhost); then the UI stays locked until it is set.
 	PasswordEnv string `yaml:"password_env"`
-}
-
-// UIPassword reads the web UI password from the configured env var.
-func (s Server) UIPassword() string {
-	if s.PasswordEnv == "" {
-		return ""
-	}
-	return os.Getenv(s.PasswordEnv)
-}
-
-type Schedule struct {
-	FetchEvery time.Duration `yaml:"fetch_every"` // 0 disables scheduled fetching
-	DigestAt   string        `yaml:"digest_at"`   // "HH:MM"; "" disables the scheduled digest
-	Timezone   string        `yaml:"timezone"`    // IANA name; "" = server local time
-}
-
-// DigestClock parses DigestAt and Timezone. ok is false when the scheduled
-// digest is disabled.
-func (s Schedule) DigestClock() (hour, minute int, loc *time.Location, ok bool, err error) {
-	loc = time.Local
-	if s.Timezone != "" {
-		if loc, err = time.LoadLocation(s.Timezone); err != nil {
-			return 0, 0, nil, false, fmt.Errorf("schedule.timezone: %w", err)
-		}
-	}
-	if s.DigestAt == "" {
-		return 0, 0, loc, false, nil
-	}
-	t, err := time.Parse("15:04", s.DigestAt)
-	if err != nil {
-		return 0, 0, nil, false, fmt.Errorf("schedule.digest_at %q: want HH:MM", s.DigestAt)
-	}
-	return t.Hour(), t.Minute(), loc, true, nil
-}
-
-// Password reads the SMTP password from the configured environment variable.
-func (e Email) Password() string {
-	if e.PasswordEnv == "" {
-		return ""
-	}
-	return os.Getenv(e.PasswordEnv)
-}
-
-// ValidateForSending checks the fields needed to actually send mail. It is
-// separate from Validate so fetching and previews work without SMTP set up.
-func (e Email) ValidateForSending() error {
-	var errs []error
-	if e.SMTPHost == "" {
-		errs = append(errs, errors.New("email.smtp_host is empty"))
-	}
-	if e.From == "" {
-		errs = append(errs, errors.New("email.from is empty"))
-	}
-	if len(e.To) == 0 {
-		errs = append(errs, errors.New("email.to is empty"))
-	}
-	if e.Username != "" && e.Password() == "" {
-		errs = append(errs, fmt.Errorf("email.username is set but $%s is empty", e.PasswordEnv))
-	}
-	return errors.Join(errs...)
+	// Interests, feeds and book follows given here are imported once into
+	// a new database; after that they are edited in the app.
+	Interests []Interest `yaml:"interests"`
 }
 
 type Sources struct {
@@ -169,6 +47,21 @@ type Sources struct {
 
 // Every source accepts `every`: the minimum time between fetches of that
 // source, however often the fetch job runs. 0 = every run.
+
+type ArXiv struct {
+	Enabled    bool          `yaml:"enabled"`
+	Every      time.Duration `yaml:"every"`
+	Categories []string      `yaml:"categories"`
+	MaxResults int           `yaml:"max_results"`
+}
+
+type HackerNews struct {
+	Enabled    bool          `yaml:"enabled"`
+	Every      time.Duration `yaml:"every"`
+	MinPoints  int           `yaml:"min_points"`
+	Lookback   time.Duration `yaml:"lookback"`
+	MaxResults int           `yaml:"max_results"`
+}
 
 type RSS struct {
 	Enabled bool          `yaml:"enabled"`
@@ -196,18 +89,14 @@ func (f *Feed) UnmarshalYAML(n *yaml.Node) error {
 	return n.Decode((*plain)(f))
 }
 
+// Books come from Open Library and Wikidata, both free and keyless.
 type Books struct {
 	Enabled  bool          `yaml:"enabled"`
 	Every    time.Duration `yaml:"every"`
 	Authors  []string      `yaml:"authors"`  // followed authors: new releases
-	Subjects []string      `yaml:"subjects"` // candidates for pick of the week
+	Subjects []string      `yaml:"subjects"` // candidates for book of the week
 	Language string        `yaml:"language"` // ISO 639-1, e.g. "en"; "" = any
 	PerQuery int           `yaml:"per_query"`
-	// GoogleAPIKeyEnv optionally names an env var with a Google Books API
-	// key; without one, requests use the shared anonymous quota.
-	GoogleAPIKeyEnv string `yaml:"google_api_key_env"`
-	OpenLibrary     bool   `yaml:"openlibrary"`
-	GoogleBooks     bool   `yaml:"googlebooks"`
 }
 
 // OpenLibraryLanguage maps Language to the MARC code Open Library's search
@@ -219,26 +108,10 @@ func (b Books) OpenLibraryLanguage() string {
 	}[strings.ToLower(b.Language)]
 }
 
-type ArXiv struct {
-	Enabled    bool          `yaml:"enabled"`
-	Every      time.Duration `yaml:"every"`
-	Categories []string      `yaml:"categories"`
-	MaxResults int           `yaml:"max_results"`
-}
-
-type HackerNews struct {
-	Enabled    bool          `yaml:"enabled"`
-	Every      time.Duration `yaml:"every"`
-	MinPoints  int           `yaml:"min_points"`
-	Lookback   time.Duration `yaml:"lookback"`
-	MaxResults int           `yaml:"max_results"`
-}
-
 type Scoring struct {
 	Weights  Weights                  `yaml:"weights"`
 	HalfLife map[string]time.Duration `yaml:"half_life"`
-	// Window is how far back (by fetch time) items are rescored and
-	// considered for digests.
+	// Window is how far back (by fetch time) items are rescored.
 	Window time.Duration `yaml:"window"`
 }
 
@@ -248,9 +121,47 @@ type Weights struct {
 	Recency    float64 `yaml:"recency"`
 }
 
-// Interest is a weighted term in the user's profile. In YAML it can be a
-// bare string (weight 1) or {term, weight}. Negative weights push matching
-// items down.
+// Edition configures the daily edition.
+type Edition struct {
+	// Sections maps item type (paper, article, news) to its number of items.
+	Sections map[string]int `yaml:"sections"`
+	MinScore float64        `yaml:"min_score"`
+	// Lookback limits an edition to items fetched this recently.
+	Lookback time.Duration `yaml:"lookback"`
+	Books    EditionBooks  `yaml:"books"`
+}
+
+// EditionBooks configures the weekly books block.
+type EditionBooks struct {
+	Weekday          string        `yaml:"weekday"` // "sunday"; "" = every edition
+	PickOfWeek       bool          `yaml:"pick_of_week"`
+	NewReleases      int           `yaml:"new_releases"`
+	NewReleaseWindow time.Duration `yaml:"new_release_window"`
+}
+
+// ParseWeekday returns the configured weekday; weekly is false for "".
+func (b EditionBooks) ParseWeekday() (day time.Weekday, weekly bool, err error) {
+	if b.Weekday == "" {
+		return 0, false, nil
+	}
+	for d := time.Sunday; d <= time.Saturday; d++ {
+		name := strings.ToLower(d.String())
+		if w := strings.ToLower(b.Weekday); w == name || w == name[:3] {
+			return d, true, nil
+		}
+	}
+	return 0, false, fmt.Errorf("edition.books.weekday %q: want a day name like sunday", b.Weekday)
+}
+
+// Learning configures the ranking model trained on your ratings.
+type Learning struct {
+	Enabled    bool    `yaml:"enabled"`
+	MinRatings int     `yaml:"min_ratings"` // before the model is even evaluated
+	MaxWeight  float64 `yaml:"max_weight"`  // cap on its share of the content score
+}
+
+// Interest is a weighted term. In YAML it can be a bare string (weight 1)
+// or {term, weight}. Negative weights push matching items down.
 type Interest struct {
 	Term   string  `yaml:"term"`
 	Weight float64 `yaml:"weight"`
@@ -273,42 +184,29 @@ func (in *Interest) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// Default returns a working configuration; Load overlays the file on top.
+// DefaultAddr is where Radar listens: this computer only.
+const DefaultAddr = "127.0.0.1:7878"
+
+// Default returns the configuration a fresh install runs with.
 func Default() Config {
 	return Config{
-		DBPath:    "radar.db",
-		UserAgent: "radar/0.1 (self-hosted reading recommender)",
+		UserAgent:   "Radar/1.0 (personal reading app; +https://github.com/Sahas001/radar)",
+		Addr:        DefaultAddr,
+		FetchEvery:  4 * time.Hour,
+		PasswordEnv: "RADAR_PASSWORD",
 		Sources: Sources{
-			ArXiv: ArXiv{
-				Enabled:    true,
-				Categories: []string{"cs.LG", "cs.CL", "cs.DC"},
-				MaxResults: 300,
-			},
-			HackerNews: HackerNews{
-				Enabled:    true,
-				MinPoints:  50,
-				Lookback:   48 * time.Hour,
-				MaxResults: 200,
-			},
-			RSS: RSS{
-				Enabled: true,
-				MaxAge:  30 * 24 * time.Hour,
-			},
-			Books: Books{
-				Enabled:         true,
-				Every:           24 * time.Hour,
-				Language:        "en",
-				PerQuery:        20,
-				GoogleAPIKeyEnv: "RADAR_GOOGLE_BOOKS_KEY",
-				OpenLibrary:     true,
-				GoogleBooks:     true,
-			},
+			ArXiv: ArXiv{Enabled: false, MaxResults: 200},
+			// Off until the reader picks a technical topic (or turns it on):
+			// HN is noise for someone who came for novels and history.
+			HackerNews: HackerNews{Enabled: false, MinPoints: 100, Lookback: 48 * time.Hour, MaxResults: 150},
+			RSS:        RSS{Enabled: true, MaxAge: 30 * 24 * time.Hour},
+			Books:      Books{Enabled: true, Every: 24 * time.Hour, Language: "en", PerQuery: 20},
 		},
 		Scoring: Scoring{
 			Weights: Weights{Keyword: 0.5, Similarity: 0.3, Recency: 0.2},
 			HalfLife: map[string]time.Duration{
 				string(item.TypePaper):   72 * time.Hour,
-				string(item.TypeArticle): 72 * time.Hour,
+				string(item.TypeArticle): 96 * time.Hour,
 				string(item.TypeNews):    24 * time.Hour,
 				// Long: the book pick is about books worth reading, not new
 				// ones; new releases have their own section.
@@ -316,75 +214,101 @@ func Default() Config {
 			},
 			Window: 30 * 24 * time.Hour,
 		},
-		Digest: Digest{
+		Edition: Edition{
 			Sections: map[string]int{
-				string(item.TypePaper):   8,
-				string(item.TypeArticle): 8,
-				string(item.TypeNews):    8,
+				string(item.TypePaper):   3,
+				string(item.TypeArticle): 4,
+				string(item.TypeNews):    3,
 			},
-			MinScore: 0.1,
+			MinScore: 0.05,
 			Lookback: 7 * 24 * time.Hour,
-			Books: DigestBooks{
+			Books: EditionBooks{
 				Weekday:          "sunday",
 				PickOfWeek:       true,
-				NewReleases:      5,
-				NewReleaseWindow: 180 * 24 * time.Hour,
+				NewReleases:      4,
+				NewReleaseWindow: 365 * 24 * time.Hour,
 			},
 		},
-		Email: Email{
-			SMTPPort:    587,
-			TLS:         "starttls",
-			PasswordEnv: "RADAR_SMTP_PASSWORD",
-		},
-		Server: Server{
-			Addr:        "127.0.0.1:8080",
-			BaseURL:     "http://localhost:8080",
-			UIAuth:      "password",
-			PasswordEnv: "RADAR_UI_PASSWORD",
-		},
-		Schedule: Schedule{
-			FetchEvery: 6 * time.Hour,
-			DigestAt:   "07:00",
-		},
-		Learning: Learning{
-			Enabled:    true,
-			MinRatings: 20,
-			MaxWeight:  0.8,
-		},
+		Learning: Learning{Enabled: true, MinRatings: 20, MaxWeight: 0.8},
 	}
 }
 
-// Load reads path over the defaults. A missing file is not an error: the
-// defaults are returned and missing is set to true.
-func Load(path string) (cfg Config, missing bool, err error) {
+// DataDir is where Radar keeps its database and optional config.yaml:
+// $RADAR_HOME if set, else the OS's per-user config folder
+// (~/.config/radar, ~/Library/Application Support/Radar, %AppData%\Radar).
+func DataDir() (string, error) {
+	if d := os.Getenv("RADAR_HOME"); d != "" {
+		return d, nil
+	}
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("no per-user config folder (set RADAR_HOME): %w", err)
+	}
+	name := "radar"
+	if os.PathSeparator == '\\' || strings.Contains(base, "Library/Application Support") {
+		name = "Radar"
+	}
+	return filepath.Join(base, name), nil
+}
+
+// Load reads path over the defaults. A missing file is fine: the defaults
+// are returned and missing is true. A relative DBPath is resolved against
+// dataDir.
+func Load(path, dataDir string) (cfg Config, missing bool, err error) {
 	cfg = Default()
 	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return cfg, true, cfg.Validate()
-	}
-	if err != nil {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		missing = true
+	case err != nil:
 		return cfg, false, err
+	case len(strings.TrimSpace(string(data))) > 0:
+		dec := yaml.NewDecoder(strings.NewReader(string(data)))
+		dec.KnownFields(true)
+		if err := dec.Decode(&cfg); err != nil {
+			return cfg, false, fmt.Errorf("parse %s: %w", path, err)
+		}
 	}
-	dec := yaml.NewDecoder(strings.NewReader(string(data)))
-	dec.KnownFields(true)
-	if err := dec.Decode(&cfg); err != nil {
-		return cfg, false, fmt.Errorf("parse %s: %w", path, err)
+	if cfg.DBPath == "" {
+		cfg.DBPath = "radar.db"
 	}
-	return cfg, false, cfg.Validate()
+	if !filepath.IsAbs(cfg.DBPath) {
+		cfg.DBPath = filepath.Join(dataDir, cfg.DBPath)
+	}
+	return cfg, missing, cfg.Validate()
+}
+
+// LocalOnly reports whether Addr only accepts connections from this computer.
+func (c Config) LocalOnly() bool {
+	host, _, err := net.SplitHostPort(c.Addr)
+	if err != nil {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// Password reads the web UI password from the configured env var.
+func (c Config) Password() string {
+	if c.PasswordEnv == "" {
+		return ""
+	}
+	return os.Getenv(c.PasswordEnv)
 }
 
 func (c Config) Validate() error {
 	var errs []error
-	if c.DBPath == "" {
-		errs = append(errs, errors.New("db_path is empty"))
+	if _, _, err := net.SplitHostPort(c.Addr); err != nil {
+		errs = append(errs, fmt.Errorf("addr %q: want host:port", c.Addr))
 	}
-	if a := c.Sources.ArXiv; a.Enabled {
-		if len(a.Categories) == 0 {
-			errs = append(errs, errors.New("sources.arxiv.categories is empty"))
-		}
-		if a.MaxResults < 1 || a.MaxResults > 2000 {
-			errs = append(errs, errors.New("sources.arxiv.max_results must be 1..2000"))
-		}
+	if c.FetchEvery < 0 {
+		errs = append(errs, errors.New("fetch_every must be >= 0"))
+	}
+	if a := c.Sources.ArXiv; a.Enabled && (a.MaxResults < 1 || a.MaxResults > 2000) {
+		errs = append(errs, errors.New("sources.arxiv.max_results must be 1..2000"))
 	}
 	if h := c.Sources.HackerNews; h.Enabled {
 		if h.Lookback <= 0 {
@@ -394,80 +318,39 @@ func (c Config) Validate() error {
 			errs = append(errs, errors.New("sources.hackernews.max_results must be 1..1000"))
 		}
 	}
+	for i, f := range c.Sources.RSS.Feeds {
+		if !strings.HasPrefix(f.URL, "http://") && !strings.HasPrefix(f.URL, "https://") {
+			errs = append(errs, fmt.Errorf("sources.rss.feeds[%d]: %q is not an http(s) URL", i, f.URL))
+		}
+		if f.Type != "" && !slices.Contains([]string{"article", "news", "paper"}, f.Type) {
+			errs = append(errs, fmt.Errorf("sources.rss.feeds[%d].type %q: want article, news or paper", i, f.Type))
+		}
+	}
+	if b := c.Sources.Books; b.PerQuery < 1 || b.PerQuery > 100 {
+		errs = append(errs, errors.New("sources.books.per_query must be 1..100"))
+	}
 	w := c.Scoring.Weights
 	if w.Keyword < 0 || w.Similarity < 0 || w.Recency < 0 {
 		errs = append(errs, errors.New("scoring.weights must be non-negative"))
 	}
 	for k, d := range c.Scoring.HalfLife {
-		if !item.Type(k).Valid() {
-			errs = append(errs, fmt.Errorf("scoring.half_life: unknown type %q", k))
-		}
-		if d <= 0 {
-			errs = append(errs, fmt.Errorf("scoring.half_life.%s must be positive", k))
+		if !item.Type(k).Valid() || d <= 0 {
+			errs = append(errs, fmt.Errorf("scoring.half_life.%s: unknown type or non-positive", k))
 		}
 	}
 	if c.Scoring.Window <= 0 {
 		errs = append(errs, errors.New("scoring.window must be positive"))
 	}
-	for i, in := range c.Interests {
-		if strings.TrimSpace(in.Term) == "" {
-			errs = append(errs, fmt.Errorf("interests[%d]: empty term", i))
+	for k, n := range c.Edition.Sections {
+		if !slices.Contains([]string{"paper", "article", "news"}, k) || n < 0 {
+			errs = append(errs, fmt.Errorf("edition.sections.%s: want paper, article or news with a count >= 0", k))
 		}
 	}
-	for i, f := range c.Sources.RSS.Feeds {
-		if u, err := url.Parse(f.URL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			errs = append(errs, fmt.Errorf("sources.rss.feeds[%d]: %q is not an http(s) URL", i, f.URL))
-		}
-		if f.Type != "" && f.Type != string(item.TypeArticle) && f.Type != string(item.TypeNews) && f.Type != string(item.TypePaper) {
-			errs = append(errs, fmt.Errorf("sources.rss.feeds[%d].type %q: want article, news or paper", i, f.Type))
-		}
+	if c.Edition.Lookback <= 0 {
+		errs = append(errs, errors.New("edition.lookback must be positive"))
 	}
-	if b := c.Sources.Books; b.PerQuery < 1 || b.PerQuery > 40 {
-		errs = append(errs, errors.New("sources.books.per_query must be 1..40"))
-	}
-	for _, e := range []struct {
-		name string
-		d    time.Duration
-	}{
-		{"sources.arxiv.every", c.Sources.ArXiv.Every}, {"sources.hackernews.every", c.Sources.HackerNews.Every},
-		{"sources.rss.every", c.Sources.RSS.Every}, {"sources.books.every", c.Sources.Books.Every},
-		{"sources.rss.max_age", c.Sources.RSS.MaxAge},
-	} {
-		if e.d < 0 {
-			errs = append(errs, fmt.Errorf("%s must be >= 0", e.name))
-		}
-	}
-	if _, _, err := c.Digest.Books.ParseWeekday(); err != nil {
+	if _, _, err := c.Edition.Books.ParseWeekday(); err != nil {
 		errs = append(errs, err)
-	}
-	if c.Digest.Books.NewReleases < 0 || c.Digest.Books.NewReleaseWindow < 0 {
-		errs = append(errs, errors.New("digest.books.new_releases and new_release_window must be >= 0"))
-	}
-	for k, n := range c.Digest.Sections {
-		if k == string(item.TypeBook) {
-			errs = append(errs, errors.New("digest.sections.book: books are configured under digest.books"))
-			continue
-		}
-		if !item.Type(k).Valid() {
-			errs = append(errs, fmt.Errorf("digest.sections: unknown type %q", k))
-		}
-		if n < 0 {
-			errs = append(errs, fmt.Errorf("digest.sections.%s must be >= 0", k))
-		}
-	}
-	if c.Digest.Lookback <= 0 {
-		errs = append(errs, errors.New("digest.lookback must be positive"))
-	}
-	switch c.Email.TLS {
-	case "starttls", "tls", "none":
-	default:
-		errs = append(errs, fmt.Errorf("email.tls %q: want starttls, tls or none", c.Email.TLS))
-	}
-	if c.Email.SMTPPort < 1 || c.Email.SMTPPort > 65535 {
-		errs = append(errs, errors.New("email.smtp_port must be 1..65535"))
-	}
-	if u, err := url.Parse(c.Server.BaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		errs = append(errs, fmt.Errorf("server.base_url %q must be an absolute http(s) URL", c.Server.BaseURL))
 	}
 	if c.Learning.MinRatings < 10 {
 		errs = append(errs, errors.New("learning.min_ratings must be at least 10"))
@@ -475,14 +358,10 @@ func (c Config) Validate() error {
 	if c.Learning.MaxWeight <= 0 || c.Learning.MaxWeight > 1 {
 		errs = append(errs, errors.New("learning.max_weight must be in (0, 1]"))
 	}
-	if c.Server.UIAuth != "password" && c.Server.UIAuth != "none" {
-		errs = append(errs, fmt.Errorf("server.ui_auth %q: want password or none", c.Server.UIAuth))
-	}
-	if c.Schedule.FetchEvery < 0 {
-		errs = append(errs, errors.New("schedule.fetch_every must be >= 0"))
-	}
-	if _, _, _, _, err := c.Schedule.DigestClock(); err != nil {
-		errs = append(errs, err)
+	for i, in := range c.Interests {
+		if strings.TrimSpace(in.Term) == "" {
+			errs = append(errs, fmt.Errorf("interests[%d]: empty term", i))
+		}
 	}
 	return errors.Join(errs...)
 }

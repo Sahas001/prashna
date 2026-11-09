@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"radar/internal/item"
-	"radar/internal/score"
+	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/radar/internal/score"
 )
 
 // Feature is one named input. Name is the identity (hashed into the

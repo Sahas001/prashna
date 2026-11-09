@@ -17,8 +17,8 @@ import (
 
 	"golang.org/x/text/encoding/htmlindex"
 
-	"radar/internal/item"
-	"radar/internal/store"
+	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/radar/internal/store"
 )
 
 // Feed is one user-configured RSS/Atom feed.

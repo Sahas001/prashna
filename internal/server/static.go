@@ -51,12 +51,12 @@ func staticHandler() http.Handler {
 const manifest = `{
   "name": "Radar",
   "short_name": "Radar",
-  "description": "Your daily reading digest",
+  "description": "A daily edition of things worth reading, chosen for you",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f2ee",
-  "theme_color": "#1d2a24",
+  "background_color": "#f6f2ea",
+  "theme_color": "#f6f2ea",
   "icons": [
     {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
     {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
@@ -73,12 +73,12 @@ func serveManifest(w http.ResponseWriter, r *http.Request) {
 }
 
 // serviceWorker caches the app shell for offline use. Pages are
-// network-first; the latest copies of Today and the reading list are kept
+// network-first; the latest copies of Today and the library are kept
 // so they can be read offline. htmx requests and POSTs always go to the
 // network. It must be served from / to control the whole origin.
 const serviceWorker = `const VERSION = "radar-__VERSION__";
 const SHELL = __SHELL__;
-const OFFLINE_PAGES = ["/", "/saved"];
+const OFFLINE_PAGES = ["/", "/library"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

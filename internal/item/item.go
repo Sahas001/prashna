@@ -88,7 +88,9 @@ type Item struct {
 	Signals   Signals
 	Feedback  Feedback
 	SavedAt   time.Time // on the reading list since; zero = not saved
-	ReadAt    time.Time // marked read; zero = unread
+	ReadAt    time.Time // first read (opened or marked); zero = unread
+	OpenedAt  time.Time // last opened from Radar; zero = never
+	OpenCount int       // times opened from Radar
 }
 
 // Normalize cleans text fields, canonicalizes the URL and derives the ID.

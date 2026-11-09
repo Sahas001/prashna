@@ -1,0 +1,9 @@
+{{define "content"}}
+<header class="edition-head">
+  <a class="back" href="/archive">Archive</a>
+  <p class="eyebrow">Edition {{.Number}}<span class="sep" aria-hidden="true">·</span>{{.Items}} {{plural .Items "piece" "pieces"}}</p>
+  <h1 class="edition-date">{{weekday .Date}}<span class="edition-day">, {{dayMonth .Date}} {{year .Date}}</span></h1>
+  <p class="edition-note">{{if .Read}}{{.Read}} of {{.Items}} read.{{else}}Nothing opened from this edition yet.{{end}}</p>
+</header>
+{{template "edition-body" .}}
+{{end}}

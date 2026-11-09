@@ -1,0 +1,126 @@
+{{define "states"}}{{if .Read}} is-read{{end}}{{if .Liked}} is-liked{{end}}{{if .Disliked}} is-disliked{{end}}{{end}}
+
+{{define "meta"}}
+<p class="meta">
+  <span class="kind kind-{{.Item.Type}}">{{typeLabel .Item.Type}}</span>
+  {{- if ne (printf "%s" .Item.Type) "book"}}<span class="sep" aria-hidden="true">·</span><time datetime="{{.Item.Published.Format "2006-01-02"}}">{{ago .Item.Published}}</time>{{end}}
+  {{- if .Reading}}<span class="sep" aria-hidden="true">·</span><span class="reading">{{.Reading}}</span>{{end}}
+  {{- if .Liked}}<span class="flag flag-liked">Favorite</span>{{else if .Disliked}}<span class="flag">Not for me</span>{{end}}
+</p>
+{{end}}
+
+{{define "link"}}<a href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" data-open="{{.Item.ID}}">{{.Item.Title}}</a>{{end}}
+
+{{define "byline"}}{{if or .Byline .Discussion}}<p class="byline">{{.Byline}}{{if .Discussion}}{{if .Byline}} · {{end}}<a href="{{.Discussion}}" target="_blank" rel="noopener noreferrer">discussion</a>{{end}}</p>{{end}}{{end}}
+
+{{define "actions"}}
+<div class="actions" hx-target="#item-{{.Item.ID}}" hx-swap="outerHTML" hx-vals='{"v": "{{.Variant}}"}'>
+  <button type="button" class="act act-save{{if .Saved}} on{{end}}" aria-pressed="{{.Saved}}"
+    hx-post="/items/{{.Item.ID}}/{{if .Saved}}unsave{{else}}save{{end}}"
+    title="{{if .Saved}}Remove from your reading list{{else}}Save to read later{{end}}">
+    <svg class="i" aria-hidden="true"><use href="#i-bookmark"/></svg><span>{{if .Saved}}Saved{{else}}Save{{end}}</span></button>
+  <button type="button" class="act act-up{{if .Liked}} on{{end}}" aria-pressed="{{.Liked}}"
+    hx-post="/items/{{.Item.ID}}/rate/{{if .Liked}}clear{{else}}up{{end}}"
+    title="{{if .Liked}}In your favorites. Click to undo{{else}}More like this. Also keeps it in Favorites{{end}}">
+    <svg class="i" aria-hidden="true"><use href="#i-up"/></svg><span>{{if .Liked}}Favorite{{else}}More like this{{end}}</span></button>
+  <button type="button" class="act act-down{{if .Disliked}} on{{end}}" aria-pressed="{{.Disliked}}"
+    hx-post="/items/{{.Item.ID}}/rate/{{if .Disliked}}clear{{else}}down{{end}}"
+    title="{{if .Disliked}}Undo{{else}}Less like this{{end}}">
+    <svg class="i" aria-hidden="true"><use href="#i-down"/></svg><span>Less</span></button>
+  {{- if .Saved}}
+  <button type="button" class="act act-read{{if .Read}} on{{end}}" aria-pressed="{{.Read}}"
+    hx-post="/items/{{.Item.ID}}/{{if .Read}}unread{{else}}read{{end}}">
+    <svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>{{if .Read}}Read{{else}}Mark read{{end}}</span></button>
+  {{- end}}
+</div>
+{{end}}
+
+{{define "story"}}
+<article class="story{{template "states" .}}" id="item-{{.Item.ID}}">
+  {{- if .Cover}}<a class="thumb" href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" tabindex="-1" data-open="{{.Item.ID}}"><img src="{{.Cover}}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>{{end}}
+  {{template "meta" .}}
+  <h3 class="story-title">{{template "link" .}}</h3>
+  {{template "byline" .}}
+  {{- if .Snippet}}<p class="summary">{{.Snippet}}</p>{{end}}
+  {{- if .Why}}<p class="why">{{.Why}}</p>{{end}}
+  {{template "actions" .}}
+</article>
+{{end}}
+
+{{define "lead"}}
+<article class="lead{{template "states" .}}" id="item-{{.Item.ID}}">
+  {{template "meta" .}}
+  <h2 class="lead-title">{{template "link" .}}</h2>
+  {{template "byline" .}}
+  {{- if .Snippet}}<p class="lead-summary">{{.Snippet}}</p>{{end}}
+  {{- if .Why}}<p class="why">{{.Why}}</p>{{end}}
+  {{template "actions" .}}
+</article>
+{{end}}
+
+{{define "cover"}}
+<a class="cover" href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" tabindex="-1" data-open="{{.Item.ID}}">
+  {{- if .Cover}}<img src="{{.Cover}}" alt="" loading="lazy" referrerpolicy="no-referrer">
+  {{- else}}<span class="cover-plain"><span class="cover-plain-title">{{.Item.Title}}</span>{{with .Item.Authors}}<span class="cover-plain-author">{{index . 0}}</span>{{end}}</span>{{end}}
+</a>
+{{end}}
+
+{{define "book"}}
+<article class="book{{template "states" .}}" id="item-{{.Item.ID}}">
+  {{template "cover" .}}
+  <h3 class="book-title">{{template "link" .}}</h3>
+  <p class="book-by">{{.Byline}}</p>
+  {{template "actions" .}}
+</article>
+{{end}}
+
+{{define "pick"}}
+<article class="pick{{template "states" .}}" id="item-{{.Item.ID}}">
+  {{template "cover" .}}
+  <div class="pick-body">
+    <h3 class="pick-title">{{template "link" .}}</h3>
+    <p class="byline">{{.Byline}}</p>
+    {{- if .Snippet}}<p class="summary">{{.Snippet}}</p>{{end}}
+    {{- if .Why}}<p class="why">{{.Why}}</p>{{end}}
+    {{template "actions" .}}
+  </div>
+</article>
+{{end}}
+
+{{define "item-update"}}
+{{- with .Card}}{{if eq .Variant "lead"}}{{template "lead" .}}{{else if eq .Variant "book"}}{{template "book" .}}{{else if eq .Variant "pick"}}{{template "pick" .}}{{else}}{{template "story" .}}{{end}}{{end}}
+<span hx-swap-oob="innerHTML:.library-count">{{if .ToRead}}{{.ToRead}}{{end}}</span>
+{{- end}}
+
+{{define "edition-body"}}
+{{- with .Lead}}{{template "lead" .}}{{end}}
+{{- range .Sections}}
+<section class="section section-{{.Key}}" aria-labelledby="h-{{.Key}}">
+  <h2 class="section-title" id="h-{{.Key}}"><span>{{.Title}}</span></h2>
+  {{- if eq .Key "book-new"}}
+  <div class="shelf">{{range .Cards}}{{template "book" .}}{{end}}</div>
+  {{- else if eq .Key "book-pick"}}
+  {{range .Cards}}{{template "pick" .}}{{end}}
+  {{- else}}
+  <div class="stories">{{range .Cards}}{{template "story" .}}{{end}}</div>
+  {{- end}}
+</section>
+{{- end}}
+{{end}}
+
+{{define "explore-page"}}{{range .Cards}}{{template "story" .}}{{end}}{{template "explore-more" .}}{{end}}
+
+{{define "explore-more"}}{{if .Next}}<button type="button" class="more" hx-get="/explore/more?type={{.Type}}&amp;offset={{.Next}}" hx-swap="outerHTML">Show more</button>{{end}}{{end}}
+
+{{define "search-results"}}
+<div id="results">
+  {{- if .Query}}
+    {{- if .Cards}}
+    <p class="results-count">{{len .Cards}} {{plural (len .Cards) "result" "results"}}{{if eq (len .Cards) 50}} (showing the best 50){{end}}</p>
+    <div class="stories">{{range .Cards}}{{template "story" .}}{{end}}</div>
+    {{- else}}
+    <p class="quiet">Nothing matches “{{.Query}}”. Search looks at titles, summaries, authors and tags of everything Radar has found.</p>
+    {{- end}}
+  {{- end}}
+</div>
+{{end}}

@@ -5,24 +5,28 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"text/tabwriter"
 	"time"
 
-	"radar/internal/fetch"
-	"radar/internal/item"
-	"radar/internal/store"
+	"github.com/Sahas001/radar/internal/config"
+	"github.com/Sahas001/radar/internal/edition"
+	"github.com/Sahas001/radar/internal/fetch"
+	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/radar/internal/store"
 )
 
-// fetchers builds the enabled fetchers, optionally restricted to names in
-// only. Feeds and book follows come from the database.
-func (a *app) fetchers(ctx context.Context, only []string) ([]fetch.Fetcher, error) {
-	client := fetch.NewClient(a.cfg.UserAgent)
-	src := a.cfg.Sources
+// fetchers builds the enabled fetchers from the current settings,
+// optionally restricted to names in only. Feeds and book follows come
+// from the database.
+func (a *app) fetchers(ctx context.Context, cfg config.Config, only []string) ([]fetch.Fetcher, error) {
+	client := fetch.NewClient(cfg.UserAgent)
+	src := cfg.Sources
 	all := map[string]fetch.Fetcher{}
-	if src.ArXiv.Enabled {
+	if src.ArXiv.Enabled && len(src.ArXiv.Categories) > 0 {
 		all["arxiv"] = &fetch.ArXiv{Client: client, Categories: src.ArXiv.Categories, MaxResults: src.ArXiv.MaxResults}
 	}
 	if src.HackerNews.Enabled {
@@ -46,31 +50,27 @@ func (a *app) fetchers(ctx context.Context, only []string) ([]fetch.Fetcher, err
 			all["rss"] = &fetch.RSS{Client: client, Feeds: feeds, State: a.store, MaxAge: src.RSS.MaxAge}
 		}
 	}
-	authors, err := a.store.BookFollowNames(ctx, store.FollowAuthor)
-	if err != nil {
-		return nil, err
-	}
-	subjects, err := a.store.BookFollowNames(ctx, store.FollowSubject)
-	if err != nil {
-		return nil, err
-	}
-	if b := src.Books; b.Enabled && len(authors)+len(subjects) > 0 {
-		q := fetch.BookQueries{Authors: authors, Subjects: subjects}
-		if b.GoogleBooks {
-			key := ""
-			if b.GoogleAPIKeyEnv != "" {
-				key = os.Getenv(b.GoogleAPIKeyEnv)
-			}
-			// Google's 429s are usually daily-quota exhaustion; retrying with
-			// backoff just delays the inevitable.
-			gbClient := fetch.NewClient(a.cfg.UserAgent)
-			gbClient.MaxRetries = 1
-			all["googlebooks"] = &fetch.GoogleBooks{Client: gbClient, APIKey: key, Queries: q,
-				Language: b.Language, PerQuery: b.PerQuery, Delay: 500 * time.Millisecond}
+	if b := src.Books; b.Enabled {
+		authors, err := a.store.BookFollowNames(ctx, store.FollowAuthor)
+		if err != nil {
+			return nil, err
 		}
-		if b.OpenLibrary {
-			all["openlibrary"] = &fetch.OpenLibrary{Client: client, Queries: q,
-				Language: b.OpenLibraryLanguage(), PerQuery: b.PerQuery, Delay: time.Second}
+		subjects, err := a.store.BookFollowNames(ctx, store.FollowSubject)
+		if err != nil {
+			return nil, err
+		}
+		if len(authors)+len(subjects) > 0 {
+			all["openlibrary"] = &fetch.OpenLibrary{
+				Client: client, Queries: fetch.BookQueries{Authors: authors, Subjects: subjects},
+				Language: b.OpenLibraryLanguage(), PerQuery: b.PerQuery, Delay: time.Second,
+				NeedsSummary: func(ctx context.Context, it item.Item) bool {
+					c := it
+					return c.Normalize() == nil && !a.store.HasSummary(ctx, c.ID)
+				},
+			}
+		}
+		if len(authors) > 0 {
+			all["wikidata"] = &fetch.Wikidata{Client: client, Authors: authors}
 		}
 	}
 	names := only
@@ -84,25 +84,29 @@ func (a *app) fetchers(ctx context.Context, only []string) ([]fetch.Fetcher, err
 	for _, n := range names {
 		f, ok := all[n]
 		if !ok {
-			return nil, fmt.Errorf("source %q is unknown or disabled", n)
+			if len(only) > 0 {
+				return nil, fmt.Errorf("source %q is unknown, turned off or has nothing to fetch", n)
+			}
+			continue
 		}
 		out = append(out, f)
-	}
-	if len(out) == 0 {
-		return nil, errors.New("no sources enabled")
 	}
 	return out, nil
 }
 
-// runFetch fetches, stores and rescores; shared by `fetch` and the
-// scheduler. Sources whose `every` interval hasn't elapsed are skipped
-// unless force is set.
+// runFetch fetches, stores and rescores. Sources whose `every` interval
+// hasn't elapsed are skipped unless force is set.
 func (a *app) runFetch(ctx context.Context, only []string, force bool) error {
-	fetchers, err := a.fetchers(ctx, only)
+	cfg := a.current(ctx)
+	fetchers, err := a.fetchers(ctx, cfg, only)
 	if err != nil {
 		return err
 	}
-	src := a.cfg.Sources
+	if len(fetchers) == 0 {
+		a.log.Info("nothing to fetch yet: add interests, feeds or authors in the app")
+		return nil
+	}
+	src := cfg.Sources
 	p, err := a.pipeline(ctx)
 	if err != nil {
 		return err
@@ -111,26 +115,135 @@ func (a *app) runFetch(ctx context.Context, only []string, force bool) error {
 	p.Force = force
 	p.Intervals = map[string]time.Duration{
 		"arxiv": src.ArXiv.Every, "hackernews": src.HackerNews.Every, "rss": src.RSS.Every,
-		"googlebooks": src.Books.Every, "openlibrary": src.Books.Every,
+		"openlibrary": src.Books.Every, "wikidata": src.Books.Every,
 	}
 	st, err := p.Run(ctx)
-	a.log.Info("fetch done", "fetched", st.Fetched, "skipped", st.Skipped, "invalid", st.Invalid,
-		"batch_dupes", st.Duplicates, "new", st.Inserted, "merged", st.Merged, "rescored", st.Rescored)
+	a.log.Info("fetch done", "fetched", st.Fetched, "skipped", st.Skipped, "new", st.Inserted, "merged", st.Merged)
 	return err
+}
+
+// fetchState lets the scheduler, the UI and the CLI share one fetch at a time.
+type fetchState struct {
+	running atomic.Bool
+	mu      sync.Mutex
+	last    time.Time
+	lastErr string
+}
+
+var errFetchRunning = errors.New("a fetch is already running")
+
+// fetchAll fetches every source and then makes today's edition if needed.
+func (a *app) fetchAll(ctx context.Context, force bool) error {
+	if !a.fetches.running.CompareAndSwap(false, true) {
+		return errFetchRunning
+	}
+	defer a.fetches.running.Store(false)
+	return a.fetchHeld(ctx, force)
+}
+
+// fetchHeld does the work of fetchAll; the caller holds fetches.running.
+func (a *app) fetchHeld(ctx context.Context, force bool) error {
+	err := a.runFetch(ctx, nil, force)
+	a.fetches.mu.Lock()
+	a.fetches.last = time.Now()
+	a.fetches.lastErr = ""
+	if err != nil {
+		a.fetches.lastErr = err.Error()
+	}
+	a.fetches.mu.Unlock()
+	if _, eerr := a.ensureEdition(ctx); eerr != nil {
+		err = errors.Join(err, eerr)
+	}
+	return err
+}
+
+// startFetch runs a fetch in the background unless one is running. The
+// running flag is taken before returning, so a page loaded right after
+// sees the fetch in progress.
+func (a *app) startFetch(force bool) {
+	if !a.fetches.running.CompareAndSwap(false, true) {
+		return
+	}
+	go func() {
+		defer a.fetches.running.Store(false)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+		if err := a.fetchHeld(ctx, force); err != nil {
+			a.log.Warn("fetch finished with errors", "err", err)
+		}
+	}()
+}
+
+func (a *app) fetchStatus() (running bool, last time.Time, lastErr string) {
+	a.fetches.mu.Lock()
+	defer a.fetches.mu.Unlock()
+	return a.fetches.running.Load(), a.fetches.last, a.fetches.lastErr
+}
+
+func (a *app) editionOptions(cfg config.Config) edition.Options {
+	sections := map[item.Type]int{}
+	for k, v := range cfg.Edition.Sections {
+		sections[item.Type(k)] = v
+	}
+	b := cfg.Edition.Books
+	day, weekly, _ := b.ParseWeekday() // validated
+	return edition.Options{
+		Sections: sections,
+		MinScore: cfg.Edition.MinScore,
+		Lookback: cfg.Edition.Lookback,
+		Books: edition.BookOptions{
+			Weekly: weekly, Weekday: day, PickOfWeek: b.PickOfWeek,
+			NewReleases: b.NewReleases, NewReleaseWindow: b.NewReleaseWindow,
+		},
+	}
+}
+
+// ensureEdition rescores (so recency is current) and makes today's edition
+// if there isn't one yet. Nothing is made before the reader has told Radar
+// what they like: an edition of whatever happened to arrive first would
+// take the day's slot.
+func (a *app) ensureEdition(ctx context.Context) (bool, error) {
+	if ready, err := a.hasProfile(ctx); err != nil || !ready {
+		return false, err
+	}
+	if err := a.rescoreAll(ctx); err != nil {
+		return false, err
+	}
+	made, err := edition.Ensure(ctx, a.store, a.editionOptions(a.current(ctx)), time.Now())
+	if made {
+		a.log.Info("made today's edition")
+	}
+	return made, err
+}
+
+// hasProfile reports whether there is anything to choose an edition by.
+func (a *app) hasProfile(ctx context.Context) (bool, error) {
+	ins, err := a.store.Interests(ctx)
+	if err != nil || len(ins) > 0 {
+		return len(ins) > 0, err
+	}
+	feeds, err := a.store.Feeds(ctx)
+	if err != nil || len(feeds) > 0 {
+		return len(feeds) > 0, err
+	}
+	authors, err := a.store.BookFollows(ctx, store.FollowAuthor)
+	if err != nil || len(authors) > 0 {
+		return len(authors) > 0, err
+	}
+	subjects, err := a.store.BookFollows(ctx, store.FollowSubject)
+	return len(subjects) > 0, err
 }
 
 func (a *app) fetch(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("fetch", flag.ContinueOnError)
-	source := fs.String("source", "", "comma-separated sources (default: all enabled): arxiv,hackernews,rss,googlebooks,openlibrary")
-	force := fs.Bool("force", false, "ignore per-source every: intervals (implied by -source)")
+	source := fs.String("source", "", "comma-separated sources (default: all): arxiv,hackernews,rss,openlibrary,wikidata")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	var only []string
 	if *source != "" {
-		only = strings.Split(*source, ",")
+		return a.runFetch(ctx, strings.Split(*source, ","), true)
 	}
-	return a.runFetch(ctx, only, *force || len(only) > 0)
+	return a.fetchAll(ctx, true)
 }
 
 func (a *app) rescore(ctx context.Context) error {
@@ -171,24 +284,17 @@ func (a *app) top(ctx context.Context, args []string) error {
 		return err
 	}
 	if len(items) == 0 {
-		fmt.Fprintln(a.out, "nothing yet - run 'radar fetch' first")
+		fmt.Fprintln(a.out, "Nothing yet. Run 'radar fetch' first.")
 		return nil
 	}
-
 	tw := tabwriter.NewWriter(a.out, 0, 0, 2, ' ', 0)
 	for _, it := range items {
 		mark := map[item.Feedback]string{item.Liked: "+", item.Disliked: "-"}[it.Feedback]
-		fmt.Fprintf(tw, "%.3f%s\t%s\t%s\t%s\t%s\n", it.Score, mark, it.ID, it.Type, it.Source, truncate(it.Title, 90))
-		fmt.Fprintf(tw, "\t\t\t\t%s\n", it.URL)
-		if hn := it.Meta["hn_url"]; hn != "" && hn != it.URL {
-			fmt.Fprintf(tw, "\t\t\t\t%s (%s points)\n", hn, it.Meta["hn_points"])
-		}
+		fmt.Fprintf(tw, "%.3f%s\t%s\t%s\t%s\n", it.Score, mark, it.ID, it.Type, truncate(it.Title, 90))
+		fmt.Fprintf(tw, "\t\t\t%s\n", it.URL)
 		if *explain {
-			fmt.Fprintf(tw, "\t\t\t\tkw=%.2f sim=%.2f rec=%.2f  tags=%s\n",
-				it.Signals.Keyword, it.Signals.Similarity, it.Signals.Recency, strings.Join(it.Tags, ","))
-			if it.Summary != "" {
-				fmt.Fprintf(tw, "\t\t\t\t%s\n", truncate(it.Summary, 200))
-			}
+			fmt.Fprintf(tw, "\t\t\tkw=%.2f sim=%.2f rec=%.2f learned=%.2f\n",
+				it.Signals.Keyword, it.Signals.Similarity, it.Signals.Recency, it.Signals.Learned)
 		}
 	}
 	return tw.Flush()
@@ -198,11 +304,7 @@ func (a *app) feedback(ctx context.Context, args []string) error {
 	if len(args) != 2 {
 		return errors.New("usage: radar feedback <id> up|down|clear")
 	}
-	fb, ok := map[string]item.Feedback{
-		"up": item.Liked, "like": item.Liked, "+1": item.Liked,
-		"down": item.Disliked, "dislike": item.Disliked, "-1": item.Disliked,
-		"clear": item.Neutral, "0": item.Neutral,
-	}[args[1]]
+	fb, ok := map[string]item.Feedback{"up": item.Liked, "down": item.Disliked, "clear": item.Neutral}[args[1]]
 	if !ok {
 		return fmt.Errorf("unknown rating %q: want up, down or clear", args[1])
 	}
@@ -210,8 +312,7 @@ func (a *app) feedback(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(a.out, "%s %s: %s\n", map[item.Feedback]string{1: "👍", -1: "👎", 0: "cleared"}[fb], it.ID, it.Title)
-	// Likes change similarity for everything, so rescore right away.
+	fmt.Fprintf(a.out, "%s %s: %s\n", args[1], it.ID, it.Title)
 	return a.rescoreAll(ctx)
 }
 

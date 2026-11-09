@@ -1,8 +1,0 @@
-{{define "content"}}
-<div class="page-head">
-  <a class="back" href="/history">← History</a>
-  <h1>{{.Digest.SentAt.Local.Format "Monday, 2 January 2006"}}</h1>
-  <p class="sub">{{.Digest.Subject}}</p>
-</div>
-<div class="cards">{{range .Cards}}{{template "card" .}}{{end}}</div>
-{{end}}

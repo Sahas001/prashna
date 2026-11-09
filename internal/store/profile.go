@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 // ErrDuplicate is returned when adding something that already exists.
@@ -325,63 +325,6 @@ func (s *Store) CountUnreadSaved(ctx context.Context) (int, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM items WHERE saved_at IS NOT NULL AND read_at IS NULL`).Scan(&n)
 	return n, err
-}
-
-// ---- History ----
-
-type DigestSummary struct {
-	ID       int64
-	SentAt   time.Time
-	Subject  string
-	Items    int
-	Liked    int
-	Disliked int
-}
-
-func (s *Store) Digests(ctx context.Context, limit, offset int) ([]DigestSummary, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT d.id, d.sent_at, d.subject, count(i.id),
-			coalesce(sum(i.feedback = 1), 0), coalesce(sum(i.feedback = -1), 0)
-		FROM digests d LEFT JOIN digest_items di ON di.digest_id = d.id LEFT JOIN items i ON i.id = di.item_id
-		GROUP BY d.id ORDER BY d.sent_at DESC, d.id DESC LIMIT ? OFFSET ?`, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []DigestSummary
-	for rows.Next() {
-		var d DigestSummary
-		var sent int64
-		if err := rows.Scan(&d.ID, &sent, &d.Subject, &d.Items, &d.Liked, &d.Disliked); err != nil {
-			return nil, err
-		}
-		d.SentAt = time.Unix(sent, 0).UTC()
-		out = append(out, d)
-	}
-	return out, rows.Err()
-}
-
-// Digest returns one sent digest and its items in display order.
-func (s *Store) Digest(ctx context.Context, id int64) (DigestSummary, []item.Item, error) {
-	var d DigestSummary
-	var sent int64
-	err := s.db.QueryRowContext(ctx, `SELECT id, sent_at, subject FROM digests WHERE id = ?`, id).Scan(&d.ID, &sent, &d.Subject)
-	if errors.Is(err, sql.ErrNoRows) {
-		return d, nil, ErrNotFound
-	}
-	if err != nil {
-		return d, nil, err
-	}
-	d.SentAt = time.Unix(sent, 0).UTC()
-	items, err := s.queryItems(ctx, `SELECT `+prefixed("i", itemCols)+` FROM digest_items di JOIN items i ON i.id = di.item_id
-		WHERE di.digest_id = ? ORDER BY di.position`, id)
-	d.Items = len(items)
-	return d, items, err
-}
-
-// RatedItems returns liked or disliked items, most recently rated first.
-func (s *Store) RatedItems(ctx context.Context, fb item.Feedback, limit, offset int) ([]item.Item, error) {
-	return s.queryItems(ctx, `SELECT `+itemCols+` FROM items WHERE feedback = ?
-		ORDER BY feedback_at DESC, id LIMIT ? OFFSET ?`, int(fb), limit, offset)
 }
 
 // prefixed qualifies a column list with a table alias.

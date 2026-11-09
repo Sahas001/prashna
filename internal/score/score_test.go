@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 func TestTokenize(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 // HNDefaultBaseURL is the Algolia HN Search API. Algolia (rather than the

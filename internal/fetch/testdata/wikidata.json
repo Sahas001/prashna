@@ -1,0 +1,22 @@
+{
+  "head": {"vars": ["work", "workLabel", "workDescription", "date", "precision", "olid", "name"]},
+  "results": {"bindings": [
+    {"work": {"type": "uri", "value": "http://www.wikidata.org/entity/Q60749449"},
+     "workLabel": {"type": "literal", "value": "Exhalation: Stories"},
+     "workDescription": {"type": "literal", "value": "2019 short story collection by Ted Chiang"},
+     "date": {"type": "literal", "value": "2019-05-07T00:00:00Z"},
+     "precision": {"type": "literal", "value": "11"},
+     "olid": {"type": "literal", "value": "OL20149336W"},
+     "name": {"type": "literal", "value": "Ted Chiang"}},
+    {"work": {"type": "uri", "value": "http://www.wikidata.org/entity/Q123"},
+     "workLabel": {"type": "literal", "value": "Words Are My Matter"},
+     "date": {"type": "literal", "value": "2016-01-01T00:00:00Z"},
+     "precision": {"type": "literal", "value": "9"},
+     "name": {"type": "literal", "value": "Ursula K. Le Guin"}},
+    {"work": {"type": "uri", "value": "http://www.wikidata.org/entity/Q999"},
+     "workLabel": {"type": "literal", "value": "Q999"},
+     "date": {"type": "literal", "value": "2020-01-01T00:00:00Z"},
+     "precision": {"type": "literal", "value": "9"},
+     "name": {"type": "literal", "value": "Ted Chiang"}}
+  ]}
+}

@@ -1,124 +1,117 @@
 # Radar
 
-A self-hosted reading recommender. It builds a curated digest of papers (arXiv), articles (your RSS/Atom feeds), HN posts and books (Open Library + Google Books), ranked against your interests with classical methods (no LLM APIs). It runs as a single Go binary backed by SQLite.
+A reading app that runs on your own computer. Each morning it puts together a short **edition** of papers, essays, discussions and books chosen for you, and it gets better at choosing as you read.
 
-## Quick start
+It's free: no accounts, no subscriptions, no paid services, no server to rent. Everything it learns about you stays in one folder on your machine.
 
-```bash
-cp radar.example.yaml radar.yaml   # edit interests
-go build -o radar ./cmd/radar
-./radar fetch                      # all sources -> SQLite, then score
-./radar top -explain               # best unrated items, with score breakdown
-./radar feedback 27615b26 up       # 👍 (id prefix ok); rescoring happens automatically
-./radar digest -preview out.html   # render the email without sending it (-books adds the weekly books block)
-./radar model                      # what the ranking model has learned from your ratings
+## Install
+
+Download the file for your computer from the [releases page](https://github.com/Sahas001/radar/releases), unpack it, and run `radar`:
+
+| System | File | Then |
+| --- | --- | --- |
+| macOS (Apple silicon / Intel) | `radar_*_darwin_arm64.tar.gz` / `_amd64` | `./radar`. The first time, macOS may block it: right-click it and choose Open, or run `xattr -d com.apple.quarantine radar`. |
+| Windows | `radar_*_windows_amd64.zip` | Double-click `radar.exe`. |
+| Linux | `radar_*_linux_amd64.tar.gz` / `_arm64` | `./radar` |
+
+Radar opens in your browser at `http://127.0.0.1:7878`. To keep it handy:
+
+- **Install it as an app**: in Chrome or Edge, use *Install Radar* in the address bar; in Safari, *File > Add to Dock*.
+- **Start it when you log in**: run `radar autostart on`. It then runs quietly in the background, and opening the app (or running `radar`) shows it instantly.
+
+Or, with Go 1.27+: `go install github.com/Sahas001/radar/cmd/radar@latest`.
+
+## Using it
+
+The first time, Radar asks what you like to read. Pick a few topics, name authors you love, or import the feeds from your current reader (OPML). It then gathers your first edition, which takes about a minute.
+
+- **Today**: the edition. It has a lead story, a few papers, essays and discussions, and on Sundays a book of the week plus new books from authors you follow. It stays the same all day, and it ends, so there's no endless scrolling. Tomorrow's edition is made from whatever arrives overnight.
+- **Explore**: everything recent, best first, for when you want more.
+- **Library**:
+  - **To read**: things you saved.
+  - **Favorites**: things you marked *More like this*, kept for rereading.
+  - **Read**: everything you've opened, most recent first, with how many times you've opened each.
+
+  Once in a while, Today also brings back something from your library that you haven't opened in a while.
+- **Archive**: every past edition, plus the things you marked *Less*.
+- **Search** covers everything Radar has ever found you.
+- **Interests**, **Feeds** and **Settings** are where you tell it more.
+
+Each piece has three buttons: **Save**, **More like this** and **Less**. Clicking through to read it counts too. That's all Radar learns from.
+
+## Where reading comes from
+
+Every source is free and needs no key:
+
+- **Blogs and magazines** you follow by RSS/Atom. Paste a site's address and Radar finds its feed.
+- **Hacker News** stories above a points threshold (on if you pick a tech topic).
+- **arXiv** papers in the categories you choose.
+- **Books** from [Open Library](https://openlibrary.org) (most-read books on your subjects, descriptions and covers) and [Wikidata](https://www.wikidata.org) (exact release dates for authors you follow).
+
+## How it chooses
+
+No AI service is involved; it's all classical techniques running locally:
+
+- **Interest matching**: weighted words and phrases in titles, summaries and tags, plus exact author names and categories.
+- **Similarity**: TF-IDF comparison with the pieces you've liked.
+- **Recency**: newer pieces get a boost that fades with time.
+- **A model of your taste**: logistic regression trained on your ratings. It only takes part once it ranks your past ratings better than your interest list does, checked by cross-validation. Its share then grows as you rate more. *Interests* shows what it has learned ("you tend to like cs.DC, Aeon").
+
+Each piece in an edition says why it was picked ("matches consensus", "similar to things you liked").
+
+## Your data
+
+Everything lives in one folder:
+
+- **Linux**: `~/.config/radar`
+- **macOS**: `~/Library/Application Support/Radar`
+- **Windows**: `%AppData%\Radar`
+
+Override it with `-data DIR` or `RADAR_HOME`. The folder holds the SQLite database, a log, and an optional `config.yaml` (see [radar.example.yaml](radar.example.yaml)). Back up by copying the folder; move to a new computer by copying it there. Radar only contacts the sources above, and only to fetch reading.
+
+## Reading on your phone
+
+Radar listens only to your own computer by default. To read on your phone at home:
+
+1. Set `addr: 0.0.0.0:7878` in `config.yaml`.
+2. Set a password in the `RADAR_PASSWORD` environment variable. Radar won't open to other devices without one.
+3. Open `http://<your-computer>:7878` on the phone.
+
+Away from home, [Tailscale](https://tailscale.com) (free for personal use) does the same without opening anything to the internet.
+
+## Commands
+
+```
+radar                 open Radar (starts it if needed)
+radar run             run without opening a browser
+radar fetch           check all sources now
+radar top             best unread items, in the terminal
+radar model           what Radar has learned from your ratings
+radar autostart on    start at login (off, status)
+radar version
 ```
 
-To run it for real, fill in the `email` and `server` sections, then:
-
-```bash
-export RADAR_SMTP_PASSWORD=...     # app password for your mail provider
-export RADAR_GOOGLE_BOOKS_KEY=...  # optional but recommended, see Books below
-export RADAR_UI_PASSWORD=...       # web UI sign-in
-./radar serve                      # web UI + feedback links + fetch every 6h + digest daily at 07:00
-```
-
-Open `server.base_url` in a browser for the web UI. On a phone, use "Add to Home Screen" or "Install app" to get Radar as a PWA.
-
-`radar serve` handles the 👍/👎 links and runs the schedule, so you don't need cron. You can still run `radar fetch` and `radar digest` from cron and use `radar serve -no-schedule` for the links only.
-
-The binary is CGO-free (`modernc.org/sqlite`), so `CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/radar` cross-compiles for a Pi or VPS.
-
-## Layout
+## Development
 
 ```
-cmd/radar/            CLI: serve, fetch, digest, top, feedback, rescore
-internal/item/        Item model, URL canonicalization, ID, merge rules
-internal/fetch/       Fetcher interface + HTTP client (UA, retries, backoff)
-  arxiv.go            arXiv Atom API: one sorted query across categories
-  hackernews.go       Algolia HN search: stories >= min_points in lookback window
-  rss.go              RSS 2.0 / RSS 1.0 / Atom, conditional GET, any charset
-  books.go            Google Books + Open Library: followed authors, subjects
-internal/pipeline/    fetch (concurrent) -> normalize -> dedupe -> save -> rescore
-internal/score/       keyword, TF-IDF similarity, recency
-internal/learn/       logistic regression on 👍/👎: features, training, cross-validation
-internal/store/       SQLite store + numbered migrations (PRAGMA user_version)
-internal/digest/      section selection + HTML/text email templates
-internal/mail/        MIME multipart/alternative + SMTP (STARTTLS / TLS / none)
-internal/links/       HMAC-signed feedback URLs
-internal/server/      HTTP: web UI (templates + htmx + PWA), auth, feedback endpoints
-  templates/          layout, pages, htmx partials
-  static/             CSS, vendored htmx 2.0.4, icons
-internal/schedule/    in-process jobs: fetch every N, digest daily at HH:MM
-internal/config/      YAML config overlaid on defaults
+go test ./...                                         # unit and handler tests
+RADAR_LIVE=1 go test -run Live ./internal/server/     # checks the starter feeds over the network
+go run ./cmd/radar -data /tmp/radar-dev               # a throwaway data folder
 ```
 
-## How it works
+The code is one Go module with no CGO (pure-Go SQLite), so `CGO_ENABLED=0 GOOS=windows go build ./cmd/radar` cross-compiles anywhere. Pushing a `v*` tag builds release archives for all platforms with GoReleaser on GitHub Actions.
 
-**Identity and dedupe.** Each URL is canonicalized: https, no `www.`, no tracking params or fragment, sorted query string. arXiv `abs`/`pdf`/`vN` links all collapse to `arxiv.org/abs/<id>`. `ID = sha1(canonical URL)[:16]`. Items with the same ID, or the same title (normalized, 4 or more words), are merged. The richer type wins (paper > book > article > news), tags and meta are combined, and your feedback is kept. So an HN post that links an arXiv paper becomes a single paper item that also carries `hn_points` and `hn_url`.
+```
+cmd/radar/          the app: CLI, background fetching, autostart
+internal/fetch/     arXiv, Hacker News, RSS/Atom, Open Library, Wikidata
+internal/pipeline/  fetch, deduplicate, save, rescore
+internal/score/     interest matching, TF-IDF similarity, recency
+internal/learn/     the ratings model: features, logistic regression, cross-validation
+internal/edition/   choosing and keeping each day's edition
+internal/store/     SQLite: items, editions, library, profile, migrations
+internal/server/    pages (Go templates + htmx), PWA, sign-in
+```
 
-**Scoring.** Each signal is in [0, 1]:
+## Credits
 
-- **keyword**: interest terms are matched as whole-word phrases. A title hit counts 1.0, a tag hit 0.8 and a summary hit 0.5, each multiplied by the term's weight. The sum is squashed with `1 - e^-x`. Negative weights subtract.
-- **similarity**: the highest TF-IDF cosine similarity to any 👍 item. The vocabulary is built from the last `scoring.window` of items plus all liked items.
-- **recency**: `0.5^(age / half_life)`, with a half-life set per type.
-
-`score = 0.5·keyword + 0.3·similarity + 0.2·recency`. Every item in the window is rescored after each fetch and after each piece of feedback. Signals are stored per item so a digest can explain its picks.
-
-**Learned ranking.** Your 👍/👎 train a logistic regression with L2 regularization. Features are hashed and include:
-- the keyword and similarity signals;
-- title and summary words;
-- tags, authors, source, feed and domain;
-- HN and Open Library popularity.
-
-Recency is left out on purpose. You rate items while they're fresh, so recency at training time says nothing about taste.
-
-Each rescore retrains on all your ratings. Training is deterministic, and with 1,000 ratings it takes about 90 ms, so it's cheap enough to run on every click.
-
-The model only switches on when it has enough evidence:
-- at least 20 ratings, including at least 5 likes and 5 dislikes;
-- and 5-fold cross-validation shows it ranks your past ratings better (higher AUC) than the keyword and similarity score alone.
-
-Once on, it replaces a growing share of that content part: `0.8·n/(n+20)` with n ratings. Recency keeps its own weight:
-
-`score = 0.8·((1−α)·content + α·p(like)) + 0.2·recency`
-
-Cards and emails then say "you tend to like cs.DC, Jane's Blog", naming the features that raised that item most. `radar model` and the Interests page show the cross-validated AUC of the model and of the interest list, how much the model trusts each built-in signal, and the features you tend to like or skip.
-
-**Digest.** Each section (papers, articles, discussions) gets the highest-scoring items that haven't been sent or rated yet. Items are marked as sent only after the SMTP server accepts the message, so a failed send retries the same items next time. Every entry says why it was picked, for example "matches large language models", "similar to items you liked" or "popular on HN".
-
-**Feedback links.** Each link is `/f/{id}/{up|down}?t=<HMAC>`. The signing key is generated on first use and stored in the database, so there's no login and no secret to configure. Opening a link shows a page that sends a POST to record the vote. Mail scanners and link prefetchers only make GET requests and don't run scripts, so they can't vote for you by accident. The confirmation page also lets you change or clear the vote.
-
-**Sources and schedule.** `radar serve` runs a fetch job every `schedule.fetch_every`. Each source can also set `every` as a minimum gap between its own fetches. Books default to `every: 24h`, so they're fetched daily while everything else runs every 6 hours. `radar fetch -force` ignores the gaps, and naming sources with `-source` implies it. If one feed or query fails, the rest are still saved, and the failure is reported.
-
-**RSS.** Feeds are listed in `sources.rss.feeds`. Radar remembers each feed's ETag and Last-Modified headers, so unchanged feeds cost one cheap 304 response. Posts older than `max_age` are skipped, so adding a blog doesn't import its whole archive. Feed `tags` are added to every post and match interests exactly.
-
-**Books.** `authors` are followed for new releases. `subjects` supply candidates for the book of the week, using Open Library's most-read works and Google's most relevant books for each subject. The same book from both APIs is merged on title plus the author's surname. The books block goes out once a week (`digest.books.weekday`). If that day's digest is missed, it goes in the next one. It contains:
-- **Book of the week**: the best-scoring unsent book of any age. Book recency has a 3-year half-life, so classics can still win.
-- **New from authors you follow**: books by followed authors published within `new_release_window`. Only books with a known publication date count.
-
-Google Books is the main source of exact release dates and descriptions. Without an API key, requests go to a quota shared by every anonymous caller, and that quota is usually used up. Radar then logs a hint and continues with Open Library alone, which only knows publication years, so the new-releases section stays mostly empty. A free key from Google Cloud Console fixes this; set `RADAR_GOOGLE_BOOKS_KEY`.
-
-An interest that names an author ("Ted Chiang") matches that author's books and papers.
-
-**Web UI.** Server-rendered Go templates. Buttons use htmx, so rating, saving or editing swaps in just the changed fragment.
-- **Today**: the best unrated items, with type tabs and "Load more". Each card has 👍/👎, save to the reading list, and a "Why" line.
-- **Reading list**: saved items, unread first, with a mark-read toggle.
-- **History**: past digests with how many items you liked or disliked, plus everything you've liked or disliked.
-- **Interests**: weighted terms (changes re-rank everything immediately), followed authors and book subjects.
-- **Feeds**: add a feed or just a blog's home page (Radar finds the feed link), set tags and type, pause, remove, see each feed's health, and "Fetch now".
-
-Interests, feeds and book follows live in SQLite. The config file only seeds them on first run.
-
-**PWA.** The app has a manifest, icons including a maskable one, and a service worker. Today and the reading list are cached network-first, so they open offline once you've visited them. Static assets carry a content hash in their URL, so a new build is picked up straight away.
-
-**Security.** The UI has a single password, read from `RADAR_UI_PASSWORD`. Sign-in uses an HMAC-signed, HttpOnly, SameSite=Lax session cookie that lasts 30 days, and changing the password signs out every session. State-changing requests go through Go's `http.CrossOriginProtection`. The content security policy allows only same-origin scripts and styles, with no inline code, which is why htmx is vendored rather than loaded from a CDN. Set `server.ui_auth: none` only on a network you already control.
-
-## Roadmap
-
-1. ~~arXiv + HN fetchers, scoring, storage~~
-2. ~~RSS/Atom fetcher, Open Library + Google Books fetchers, weekly book pick and followed-author releases~~
-3. ~~Email digest (SMTP) with signed 👍/👎 links, `radar serve` feedback endpoint, in-process scheduler~~
-4. ~~Web UI (Go templates + htmx, PWA): history, reading list, manage interests/feeds; profile moves into SQLite~~
-5. ~~Learned ranking: logistic regression on feedback, gated by cross-validation~~
-6. TUI client
+Set in [Literata](https://github.com/googlefonts/literata) (SIL Open Font License, included). Interactions use [htmx](https://htmx.org) (Zero-Clause BSD). Book data from Open Library and Wikidata (CC0).

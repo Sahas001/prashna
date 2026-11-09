@@ -1,4 +1,6 @@
-// Command radar is a self-hosted reading recommender.
+// Command radar is a personal reading app: it gathers papers, articles,
+// discussions and books from free sources, learns what you like, and puts
+// together a small daily edition. It runs entirely on your own computer.
 package main
 
 import (
@@ -10,33 +12,41 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"syscall"
-	_ "time/tzdata" // schedule.timezone works on minimal hosts without /usr/share/zoneinfo
+	_ "time/tzdata" // correct local dates on minimal systems without zoneinfo
 
-	"radar/internal/config"
-	"radar/internal/item"
-	"radar/internal/learn"
-	"radar/internal/pipeline"
-	"radar/internal/score"
-	"radar/internal/store"
+	"github.com/Sahas001/radar/internal/config"
+	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/radar/internal/learn"
+	"github.com/Sahas001/radar/internal/pipeline"
+	"github.com/Sahas001/radar/internal/score"
+	"github.com/Sahas001/radar/internal/store"
 )
 
-const usage = `radar - personal reading recommender
+// version is set at build time: -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
+const usage = `Radar: a reading app that learns what you like.
 
 Usage:
-  radar [-config radar.yaml] [-v] <command> [flags]
+  radar                 open Radar in your browser (starts it if needed)
+  radar <command>
 
 Commands:
-  serve      run the feedback server plus scheduled fetches and digests
-  fetch      fetch all enabled sources, store, and rescore
-  digest     email a digest of the best unsent items (-preview / -text to just look)
-  top        print the highest-scoring unrated items
-  feedback   rate an item: radar feedback <id> up|down|clear
-  model      show what the ranking model has learned from your ratings
-  rescore    recompute scores (after editing interests)
+  run         run Radar without opening a browser (for autostart and servers)
+  fetch       check all sources now
+  top         list the best unread items in the terminal
+  model       show what Radar has learned from your ratings
+  autostart   start Radar when you log in: radar autostart on|off|status
+  version     print the version
 
-Run 'radar <command> -h' for command flags.
+Options:
+  -data DIR   where Radar keeps its data (default: your user config folder,
+              or $RADAR_HOME)
+  -config F   optional config file (default: <data>/config.yaml)
+  -v          verbose logging
 `
 
 func main() {
@@ -51,57 +61,93 @@ func main() {
 }
 
 type app struct {
-	cfg   config.Config
-	store *store.Store
-	log   *slog.Logger
-	out   io.Writer
+	cfg     config.Config // from defaults and the config file
+	dataDir string
+	cfgPath string
+	store   *store.Store
+	log     *slog.Logger
+	out     io.Writer
+	fetches fetchState
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("radar", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { fmt.Fprint(stderr, usage) }
-	cfgPath := fs.String("config", "radar.yaml", "config file")
-	verbose := fs.Bool("v", false, "debug logging")
+	dataFlag := fs.String("data", "", "data folder")
+	cfgFlag := fs.String("config", "", "config file")
+	verbose := fs.Bool("v", false, "verbose logging")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if fs.NArg() == 0 {
+	cmd, cmdArgs := "open", fs.Args()
+	if len(cmdArgs) > 0 {
+		cmd, cmdArgs = cmdArgs[0], cmdArgs[1:]
+	}
+	switch cmd {
+	case "version", "-version", "--version":
+		fmt.Fprintln(stdout, "radar", version)
+		return nil
+	case "help":
 		fs.Usage()
-		return flag.ErrHelp
+		return nil
+	}
+
+	dataDir := *dataFlag
+	if dataDir == "" {
+		var err error
+		if dataDir, err = config.DataDir(); err != nil {
+			return err
+		}
+	}
+	if abs, err := filepath.Abs(dataDir); err == nil {
+		dataDir = abs
+	}
+	cfgPath := *cfgFlag
+	if cfgPath == "" {
+		cfgPath = filepath.Join(dataDir, "config.yaml")
+	}
+	cfg, _, err := config.Load(cfgPath, dataDir)
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
 	}
 
 	level := slog.LevelInfo
 	if *verbose {
 		level = slog.LevelDebug
 	}
-	log := slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: level}))
+	logOut := stderr
+	a := &app{cfg: cfg, dataDir: dataDir, cfgPath: cfgPath, out: stdout}
 
-	cfg, missing, err := config.Load(*cfgPath)
-	if err != nil {
-		return fmt.Errorf("config: %w", err)
-	}
-	if missing {
-		log.Warn("config file not found, using defaults (see radar.example.yaml)", "path", *cfgPath)
-	}
-
-	cmd, cmdArgs := fs.Arg(0), fs.Args()[1:]
-	// `radar <cmd> -h` must not create or migrate a database. Commands
+	// `radar <cmd> -h` must not create a data folder or database. Commands
 	// parse their flags before touching the store, so a nil store is safe.
-	if slices.ContainsFunc(cmdArgs, func(a string) bool { return a == "-h" || a == "-help" || a == "--help" }) {
-		a := &app{cfg: cfg, log: log, out: stdout}
-		switch cmd {
-		case "serve":
-			return a.serve(ctx, cmdArgs)
-		case "fetch":
-			return a.fetch(ctx, cmdArgs)
-		case "digest":
-			return a.digest(ctx, cmdArgs)
-		case "top":
-			return a.top(ctx, cmdArgs)
+	if slices.ContainsFunc(cmdArgs, func(s string) bool { return s == "-h" || s == "-help" || s == "--help" }) {
+		a.log = slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: level}))
+		return a.dispatch(ctx, cmd, cmdArgs, fs)
+	}
+
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		return fmt.Errorf("create data folder: %w", err)
+	}
+	if cmd == "open" || cmd == "run" {
+		// Long-running: also log to a file, since autostarted copies have
+		// no terminal.
+		if f, err := openLog(filepath.Join(dataDir, "radar.log")); err == nil {
+			defer f.Close()
+			logOut = io.MultiWriter(stderr, f)
 		}
-		fs.Usage()
-		return flag.ErrHelp
+	}
+	a.log = slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{Level: level}))
+
+	if cmd == "open" {
+		// Already running? Just show it.
+		if url, ok := a.runningURL(ctx); ok {
+			a.log.Info("Radar is already running", "url", url)
+			return openBrowser(url)
+		}
+	}
+	if cmd == "autostart" {
+		return a.dispatch(ctx, cmd, cmdArgs, fs)
 	}
 
 	st, err := store.Open(ctx, cfg.DBPath)
@@ -109,30 +155,72 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	defer st.Close()
-	a := &app{cfg: cfg, store: st, log: log, out: stdout}
+	a.store = st
 	if err := a.seedProfile(ctx); err != nil {
 		return err
 	}
+	return a.dispatch(ctx, cmd, cmdArgs, fs)
+}
 
+func (a *app) dispatch(ctx context.Context, cmd string, args []string, fs *flag.FlagSet) error {
 	switch cmd {
-	case "serve":
-		return a.serve(ctx, cmdArgs)
+	case "open":
+		return a.serve(ctx, args, true)
+	case "run", "serve":
+		return a.serve(ctx, args, false)
 	case "fetch":
-		return a.fetch(ctx, cmdArgs)
-	case "digest":
-		return a.digest(ctx, cmdArgs)
+		return a.fetch(ctx, args)
 	case "top":
-		return a.top(ctx, cmdArgs)
+		return a.top(ctx, args)
 	case "feedback":
-		return a.feedback(ctx, cmdArgs)
+		return a.feedback(ctx, args)
 	case "rescore":
 		return a.rescore(ctx)
 	case "model":
 		return a.model(ctx)
+	case "autostart":
+		return a.autostart(args)
 	default:
 		fs.Usage()
 		return fmt.Errorf("unknown command %q", cmd)
 	}
+}
+
+// openLog opens the log file for appending, starting afresh once it
+// grows past a few megabytes.
+func openLog(path string) (*os.File, error) {
+	if fi, err := os.Stat(path); err == nil && fi.Size() > 5<<20 {
+		os.Rename(path, path+".1")
+	}
+	return os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+}
+
+// current is the effective configuration: the config file with the
+// settings saved in the app applied on top.
+func (a *app) current(ctx context.Context) config.Config {
+	var s config.Settings
+	if ok, err := a.store.JSONSetting(ctx, config.SettingsKey, &s); err != nil {
+		a.log.Error("load settings", "err", err)
+	} else if ok {
+		return a.cfg.With(s)
+	}
+	return a.cfg
+}
+
+// settings returns the app-editable settings as stored, or the config
+// file's values if nothing was saved yet. (Read them from here, not from
+// current(): settings like the theme don't live in the config.)
+func (a *app) settings(ctx context.Context) config.Settings {
+	var s config.Settings
+	if ok, err := a.store.JSONSetting(ctx, config.SettingsKey, &s); err == nil && ok {
+		s.Normalize()
+		return s
+	}
+	return a.cfg.Settings()
+}
+
+func (a *app) saveSettings(ctx context.Context, s config.Settings) error {
+	return a.store.SetJSONSetting(ctx, config.SettingsKey, s)
 }
 
 // scorer builds a Scorer from the interest profile in the database.
@@ -158,7 +246,7 @@ func (a *app) pipeline(ctx context.Context) (*pipeline.Pipeline, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := a.cfg.Learning
+	l := a.current(ctx).Learning
 	return &pipeline.Pipeline{
 		Store:    a.store,
 		Scorer:   sc,
@@ -178,8 +266,8 @@ func (a *app) rescoreAll(ctx context.Context) error {
 }
 
 // seedProfile imports interests, feeds and book follows from the config
-// file into a fresh database. After that the database (edited in the web
-// UI) is the source of truth and those config lists are ignored.
+// file into a fresh database. After that the database (edited in the app)
+// is the source of truth and those config lists are ignored.
 func (a *app) seedProfile(ctx context.Context) error {
 	p := store.Profile{Authors: a.cfg.Sources.Books.Authors, Subjects: a.cfg.Sources.Books.Subjects}
 	for _, in := range a.cfg.Interests {
@@ -192,18 +280,9 @@ func (a *app) seedProfile(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("import profile from config: %w", err)
 	}
-	if seeded {
-		a.log.Info("imported interests, feeds and book follows from config; edit them in the web UI from now on",
+	if seeded && len(p.Interests)+len(p.Feeds)+len(p.Authors)+len(p.Subjects) > 0 {
+		a.log.Info("imported interests, feeds and book follows from the config file",
 			"interests", len(p.Interests), "feeds", len(p.Feeds), "authors", len(p.Authors), "subjects", len(p.Subjects))
 	}
 	return nil
-}
-
-// digestSections converts config section limits to typed keys.
-func (a *app) digestSections() map[item.Type]int {
-	out := make(map[item.Type]int, len(a.cfg.Digest.Sections))
-	for k, v := range a.cfg.Digest.Sections {
-		out[item.Type(k)] = v
-	}
-	return out
 }

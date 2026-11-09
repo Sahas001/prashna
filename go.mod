@@ -1,4 +1,4 @@
-module radar
+module github.com/Sahas001/radar
 
 go 1.27.3
 

@@ -17,7 +17,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"radar/internal/item"
+	"github.com/Sahas001/radar/internal/item"
 )
 
 //go:embed migrations/*.sql
@@ -94,7 +94,7 @@ func (s *Store) migrate(ctx context.Context) error {
 }
 
 const itemCols = `id, type, title, url, source, summary, authors, tags, meta,
-	published, fetched_at, score, sig_keyword, sig_similarity, sig_recency, feedback, saved_at, read_at, sig_learned, learned_why`
+	published, fetched_at, score, sig_keyword, sig_similarity, sig_recency, feedback, saved_at, read_at, sig_learned, learned_why, opened_at, open_count`
 
 type scanner interface{ Scan(dest ...any) error }
 
@@ -106,11 +106,12 @@ func scanItem(row scanner) (item.Item, error) {
 		typ                  string
 		feedback             int
 		savedAt, readAt      sql.NullInt64
+		openedAt             sql.NullInt64
 		learnedWhy           string
 	)
 	err := row.Scan(&it.ID, &typ, &it.Title, &it.URL, &it.Source, &it.Summary, &authors, &tags, &meta,
 		&published, &fetchedAt, &it.Score, &it.Signals.Keyword, &it.Signals.Similarity, &it.Signals.Recency, &feedback,
-		&savedAt, &readAt, &it.Signals.Learned, &learnedWhy)
+		&savedAt, &readAt, &it.Signals.Learned, &learnedWhy, &openedAt, &it.OpenCount)
 	if err != nil {
 		return it, err
 	}
@@ -119,6 +120,9 @@ func scanItem(row scanner) (item.Item, error) {
 	}
 	if readAt.Valid {
 		it.ReadAt = time.Unix(readAt.Int64, 0).UTC()
+	}
+	if openedAt.Valid {
+		it.OpenedAt = time.Unix(openedAt.Int64, 0).UTC()
 	}
 	it.Type = item.Type(typ)
 	it.Feedback = item.Feedback(feedback)

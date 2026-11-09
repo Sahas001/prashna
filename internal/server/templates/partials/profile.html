@@ -1,49 +1,53 @@
 {{define "interests"}}
 <section id="interests" class="panel">
-  <div class="panel-head">
-    <h2>Interests</h2>
-    <p class="hint">Words and phrases match titles, summaries and tags. A tag such as <code>cs.DC</code> or an author's name matches exactly. A negative weight pushes matching items down.</p>
-  </div>
+  <header class="panel-head">
+    <h2>What you like to read about</h2>
+    <p class="hint">Words and phrases match titles, summaries and tags; a tag like <code>cs.DC</code> or an author’s name matches exactly. Give something a negative weight to see less of it.</p>
+  </header>
   <form class="add-row" hx-post="/interests" hx-target="#interests" hx-swap="outerHTML">
-    <input name="term" placeholder="e.g. consensus protocols" value="{{.Term}}" aria-label="Interest" required maxlength="100" autocomplete="off">
-    <input name="weight" type="number" step="0.5" min="-3" max="3" value="1" aria-label="Weight" class="weight">
-    <button type="submit" class="btn primary">Add</button>
+    <label class="sr-only" for="new-term">New interest</label>
+    <input id="new-term" name="term" placeholder="Add a topic, e.g. typography" value="{{.Term}}" required maxlength="100" autocomplete="off">
+    <label class="sr-only" for="new-weight">Weight</label>
+    <input id="new-weight" name="weight" type="number" step="0.5" min="-3" max="3" value="1" class="weight">
+    <button type="submit" class="btn">Add</button>
   </form>
   {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
   {{- if .Interests}}
-  <ul class="rows">
+  <ul class="terms">
     {{- range .Interests}}
-    <li class="row{{if lt .Weight 0.0}} negative{{end}}">
-      <span class="term">{{.Term}}</span>
-      <input type="number" step="0.5" min="-3" max="3" name="weight" value="{{.Weight}}" aria-label="Weight for {{.Term}}" class="weight"
+    <li class="term{{if lt .Weight 0.0}} is-negative{{end}}">
+      <span class="term-name">{{if lt .Weight 0.0}}<span class="term-avoid">Less of</span> {{end}}{{.Term}}</span>
+      <label class="sr-only" for="w-{{.ID}}">Weight for {{.Term}}</label>
+      <input id="w-{{.ID}}" type="number" step="0.5" min="-3" max="3" name="weight" value="{{.Weight}}" class="weight"
         hx-post="/interests/{{.ID}}/weight" hx-trigger="change" hx-target="#interests" hx-swap="outerHTML">
-      <button type="button" class="icon-btn" title="Remove {{.Term}}" aria-label="Remove {{.Term}}"
+      <button type="button" class="remove" aria-label="Remove {{.Term}}" title="Remove"
         hx-post="/interests/{{.ID}}/delete" hx-target="#interests" hx-swap="outerHTML">×</button>
     </li>
     {{- end}}
   </ul>
   {{- else}}
-  <p class="empty-inline">No interests yet. Add a few topics so Radar knows what to look for.</p>
+  <p class="quiet">Nothing here yet. A handful of topics is enough to start; Radar learns the rest from what you mark.</p>
   {{- end}}
 </section>
 {{end}}
 
 {{define "follows"}}
 <section id="follows-{{.Kind}}" class="panel">
-  <div class="panel-head">
+  <header class="panel-head">
     <h2>{{.Title}}</h2>
     <p class="hint">{{.Hint}}</p>
-  </div>
+  </header>
   <form class="add-row" hx-post="/follows" hx-target="#follows-{{.Kind}}" hx-swap="outerHTML">
     <input type="hidden" name="kind" value="{{.Kind}}">
-    <input name="name" placeholder="{{.Placeholder}}" aria-label="{{.Title}}" required maxlength="100" autocomplete="off">
-    <button type="submit" class="btn primary">Add</button>
+    <label class="sr-only" for="follow-{{.Kind}}">{{.Title}}</label>
+    <input id="follow-{{.Kind}}" name="name" placeholder="{{.Placeholder}}" required maxlength="100" autocomplete="off">
+    <button type="submit" class="btn">Add</button>
   </form>
   {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
   {{- if .Items}}
-  <ul class="chips">
+  <ul class="names">
     {{- range .Items}}
-    <li class="chip">{{.Name}}<button type="button" title="Remove {{.Name}}" aria-label="Remove {{.Name}}"
+    <li>{{.Name}}<button type="button" class="remove" aria-label="Remove {{.Name}}" title="Remove"
       hx-post="/follows/{{.ID}}/delete" hx-vals='{"kind": "{{.Kind}}"}' hx-target="#follows-{{.Kind}}" hx-swap="outerHTML">×</button></li>
     {{- end}}
   </ul>
@@ -51,88 +55,165 @@
 </section>
 {{end}}
 
+{{define "model"}}
+<section id="model" class="panel">
+  <header class="panel-head">
+    <h2>What Radar has learned</h2>
+    <p class="hint">Every “More like this” and “Less” teaches Radar your taste. It only starts re-ranking once it predicts your past ratings better than your interest list does.</p>
+  </header>
+  <p class="model-status{{if .Active}} is-on{{end}}">{{.Status}}</p>
+  {{- if .Progress}}
+  <progress class="meter" value="{{.Progress}}" max="100" aria-label="Ratings collected">{{.Progress}}%</progress>
+  {{- end}}
+  {{- if .ModelAUC}}
+  <dl class="figures">
+    <div><dt>Ratings</dt><dd>{{.Ratings}}</dd></div>
+    <div><dt>Learned model</dt><dd>{{printf "%.2f" .ModelAUC}}</dd></div>
+    <div><dt>Interests alone</dt><dd>{{printf "%.2f" .BaselineAUC}}</dd></div>
+  </dl>
+  <p class="hint">How often a piece you liked ranks above one you didn’t, checked on ratings each model hasn’t seen. 0.50 is chance.</p>
+  {{- if .TopLiked}}
+  <h3 class="minor">You tend to like</h3>
+  <p class="learned">{{range $i, $w := .TopLiked}}{{if $i}}, {{end}}{{$w.Label}}{{end}}</p>
+  {{- end}}
+  {{- if .TopDisliked}}
+  <h3 class="minor">You tend to skip</h3>
+  <p class="learned muted">{{range $i, $w := .TopDisliked}}{{if $i}}, {{end}}{{$w.Label}}{{end}}</p>
+  {{- end}}
+  {{- end}}
+</section>
+{{end}}
+
 {{define "feeds"}}
-<section id="feeds" class="panel"{{if .Fetching}} hx-get="/feeds?partial=1" hx-trigger="every 3s" hx-swap="outerHTML"{{end}}>
-  <form class="feed-form" hx-post="/feeds" hx-target="#feeds" hx-swap="outerHTML">
-    <div class="field wide">
-      <label for="feed-url">Feed URL</label>
-      <input id="feed-url" name="url" type="url" placeholder="https://example.com/feed.xml" value="{{.Form.URL}}" required>
+<div id="feeds">
+<section class="panel">
+  <header class="panel-head">
+    <h2>Follow a blog or magazine</h2>
+    <p class="hint">Paste its address. Radar finds the feed for you.</p>
+  </header>
+  <form class="feed-form" hx-post="/feeds" hx-target="#feeds" hx-swap="outerHTML" hx-disabled-elt="find button">
+    <div class="field field-wide">
+      <label for="feed-url">Address</label>
+      <input id="feed-url" name="url" placeholder="example.com/blog" value="{{.Form.URL}}" required autocomplete="off" inputmode="url">
     </div>
     <div class="field">
       <label for="feed-name">Name <span class="opt">optional</span></label>
-      <input id="feed-name" name="name" placeholder="Uses the feed's title" value="{{.Form.Name}}">
+      <input id="feed-name" name="name" placeholder="Uses the site’s own name" value="{{.Form.Name}}">
     </div>
     <div class="field">
-      <label for="feed-tags">Tags <span class="opt">comma-separated</span></label>
-      <input id="feed-tags" name="tags" placeholder="distributed systems" value="{{.Form.Tags}}">
+      <label for="feed-tags">Tags <span class="opt">optional, comma-separated</span></label>
+      <input id="feed-tags" name="tags" placeholder="design, typography" value="{{.Form.Tags}}">
     </div>
-    <div class="field narrow">
+    <div class="field field-narrow">
       <label for="feed-type">Shown as</label>
       <select id="feed-type" name="type">
-        <option value="article"{{if eq .Form.Type "article"}} selected{{end}}>Articles</option>
+        <option value="article"{{if eq .Form.Type "article"}} selected{{end}}>Essays</option>
         <option value="news"{{if eq .Form.Type "news"}} selected{{end}}>Discussions</option>
         <option value="paper"{{if eq .Form.Type "paper"}} selected{{end}}>Papers</option>
       </select>
     </div>
-    <div class="field submit"><button type="submit" class="btn primary">Add feed<span class="htmx-indicator"> …</span></button></div>
+    <div class="field field-submit"><button type="submit" class="btn btn-primary">Follow<span class="busy" aria-hidden="true">ing…</span></button></div>
   </form>
   {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
   {{- if .Message}}<p class="form-ok" role="status">{{.Message}}</p>{{end}}
+</section>
 
-  <div class="feeds-head">
+<section class="panel">
+  <header class="panel-head panel-head-row">
     <h2>{{len .Feeds}} {{plural (len .Feeds) "feed" "feeds"}}</h2>
-    {{- if .CanFetch}}
-    <button type="button" class="btn" hx-post="/feeds/fetch" hx-target="#feeds" hx-swap="outerHTML"{{if .Fetching}} disabled{{end}}>{{if .Fetching}}Fetching…{{else}}Fetch now{{end}}</button>
-    {{- end}}
-  </div>
+    {{- if .Feeds}}<a class="btn btn-quiet" href="/feeds/export" hx-boost="false" download>Export OPML</a>{{end}}
+  </header>
   {{- if .Feeds}}
   <ul class="feed-list">
     {{- range .Feeds}}
-    <li class="feed{{if not .Enabled}} off{{end}}">
+    <li class="feed{{if not .Enabled}} is-paused{{end}}">
       <div class="feed-main">
-        <div class="feed-title">{{.Title}}{{if ne (printf "%s" .Type) "article"}} <span class="type type-{{.Type}}">{{typeLabel .Type}}</span>{{end}}</div>
-        <div class="feed-url">{{.URL}}</div>
-        {{- if .Tags}}<div class="feed-tags">{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</div>{{end}}
-        <div class="status {{.StatusClass}}">{{if .Enabled}}{{.Status}}{{else}}Paused{{end}}</div>
+        <p class="feed-title">{{.Title}}{{if ne (printf "%s" .Type) "article"}} <span class="kind kind-{{.Type}}">{{typeLabel .Type}}s</span>{{end}}</p>
+        <p class="feed-url">{{.URL}}</p>
+        {{- if .Tags}}<p class="feed-tags">{{range $i, $t := .Tags}}{{if $i}}, {{end}}{{$t}}{{end}}</p>{{end}}
+        <p class="status status-{{.StatusClass}}">{{if .Enabled}}{{.Status}}{{else}}Paused{{end}}</p>
       </div>
       <div class="feed-actions">
-        <button type="button" class="btn small" hx-post="/feeds/{{.ID}}/toggle" hx-vals='{"enabled": "{{not .Enabled}}"}' hx-target="#feeds" hx-swap="outerHTML">{{if .Enabled}}Pause{{else}}Resume{{end}}</button>
-        <button type="button" class="btn small danger" hx-post="/feeds/{{.ID}}/delete" hx-confirm="Stop following {{.Title}}?" hx-target="#feeds" hx-swap="outerHTML">Remove</button>
+        <button type="button" class="btn btn-small" hx-post="/feeds/{{.ID}}/toggle" hx-vals='{"enabled": "{{not .Enabled}}"}' hx-target="#feeds" hx-swap="outerHTML">{{if .Enabled}}Pause{{else}}Resume{{end}}</button>
+        <button type="button" class="btn btn-small btn-danger" hx-post="/feeds/{{.ID}}/delete" hx-confirm="Stop following {{.Title}}?" hx-target="#feeds" hx-swap="outerHTML">Remove</button>
       </div>
     </li>
     {{- end}}
   </ul>
   {{- else}}
-  <p class="empty-inline">No feeds yet. Add a blog's RSS or Atom feed above.</p>
+  <p class="quiet">You don’t follow any feeds yet.</p>
   {{- end}}
 </section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Bring your feeds from another reader</h2>
+    <p class="hint">Export an OPML file from Feedly, NetNewsWire, Inoreader or similar, then import it here.</p>
+  </header>
+  <form class="import-form" hx-post="/feeds/import" hx-encoding="multipart/form-data" hx-target="#feeds" hx-swap="outerHTML">
+    <input type="file" name="opml" accept=".opml,.xml,text/xml,application/xml" required aria-label="OPML file">
+    <button type="submit" class="btn">Import</button>
+  </form>
+</section>
+</div>
 {{end}}
 
-{{define "model"}}
-<section id="model" class="panel">
-  <div class="panel-head">
-    <h2>Learned ranking</h2>
-    <p class="hint">Radar learns from your 👍 and 👎. Once it ranks your past ratings better than the interest list alone, it starts re-ranking everything.</p>
+{{define "fetch-status"}}
+<p id="fetch-status" class="fetch-status"{{if .Running}} hx-get="/status" hx-trigger="every 2s" hx-swap="outerHTML"{{end}}>
+  {{- if .Running}}<span class="pulse" aria-hidden="true"></span>Checking your sources…
+  {{- else if .Error}}Last check {{ago .Last}} had a problem: {{.Error}}
+  {{- else if not .Last.IsZero}}Last checked {{ago .Last}}.
+  {{- else}}Not checked since Radar started.{{end}}
+</p>
+{{end}}
+
+{{define "settings-form"}}
+<form id="settings" class="settings" hx-post="/settings" hx-target="#settings" hx-swap="outerHTML">
+  <section class="panel">
+    <header class="panel-head"><h2>Each day’s edition</h2></header>
+    <div class="grid-3">
+      <div class="field"><label for="s-papers">Papers</label><input id="s-papers" name="papers" type="number" min="0" max="10" value="{{.Papers}}"></div>
+      <div class="field"><label for="s-articles">Essays</label><input id="s-articles" name="articles" type="number" min="0" max="10" value="{{.Articles}}"></div>
+      <div class="field"><label for="s-discussions">Discussions</label><input id="s-discussions" name="discussions" type="number" min="0" max="10" value="{{.Discussions}}"></div>
+    </div>
+    <div class="field">
+      <label for="s-weekday">Books appear</label>
+      <select id="s-weekday" name="books_weekday">
+        {{- $cur := .BooksWeekday}}
+        {{- range .Weekdays}}<option value="{{.Value}}"{{if eq .Value $cur}} selected{{end}}>{{.Label}}</option>{{end}}
+        <option value="every"{{if eq $cur ""}} selected{{end}}>In every edition</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head"><h2>Sources</h2><p class="hint">Everything here is free and needs no account.</p></header>
+    <label class="check"><input type="checkbox" name="hn_enabled"{{if .HNEnabled}} checked{{end}}> <span><strong>Hacker News</strong>: stories with at least</span>
+      <input class="inline-num" name="hn_min_points" type="number" min="1" max="2000" value="{{.HNMinPoints}}" aria-label="Minimum points"> <span>points</span></label>
+    <label class="check"><input type="checkbox" name="arxiv_enabled"{{if .ArxivEnabled}} checked{{end}}> <span><strong>arXiv</strong>: new papers in these categories</span></label>
+    <div class="field field-indent">
+      <input name="arxiv_categories" value="{{.Categories}}" placeholder="cs.LG, cs.DC, q-bio.NC" aria-label="arXiv categories">
+      <p class="hint">Codes from <a href="https://arxiv.org/category_taxonomy" target="_blank" rel="noopener noreferrer">arXiv’s list</a>, separated by commas.</p>
+    </div>
+    <label class="check"><input type="checkbox" name="books_enabled"{{if .BooksEnabled}} checked{{end}}> <span><strong>Books</strong> from Open Library and Wikidata, for the authors and subjects on your Interests page</span></label>
+    <div class="field">
+      <label for="s-every">Check for new reading every</label>
+      <select id="s-every" name="fetch_every_hours">
+        {{- $h := .FetchEveryHours}}
+        {{- range $o := (list 1 2 4 8 12 24)}}<option value="{{$o}}"{{if eq $o $h}} selected{{end}}>{{$o}} {{plural $o "hour" "hours"}}</option>{{end}}
+      </select>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head"><h2>Learning</h2></header>
+    <label class="check"><input type="checkbox" name="learning_enabled"{{if .LearningEnabled}} checked{{end}}> <span>Learn from my ratings to re-rank what I see</span></label>
+  </section>
+
+  <div class="form-foot">
+    <button type="submit" class="btn btn-primary">Save settings</button>
+    {{- if .Saved}}<span class="form-ok" role="status">Saved.</span>{{end}}
+    {{- if .Error}}<span class="form-error" role="alert">{{.Error}}</span>{{end}}
   </div>
-  <p class="model-status{{if .Active}} on{{end}}">{{.Status}}</p>
-  {{- if .Progress}}
-  <progress class="meter" value="{{.Progress}}" max="100" aria-label="Ratings collected">{{.Progress}}%</progress>
-  {{- end}}
-  {{- if .ModelAUC}}
-  <dl class="model-stats">
-    <div><dt>Ratings</dt><dd>{{.Ratings}} <span class="muted">({{.Liked}} 👍 · {{.Disliked}} 👎)</span></dd></div>
-    <div><dt>Learned model</dt><dd>{{printf "%.2f" .ModelAUC}}</dd></div>
-    <div><dt>Interests alone</dt><dd>{{printf "%.2f" .BaselineAUC}}</dd></div>
-  </dl>
-  <p class="hint">Scores are cross-validated AUC: how often a liked item ranks above a disliked one. 0.5 is a coin flip, 1.0 is perfect.</p>
-  {{- if .TopLiked}}
-  <h3 class="mini">You tend to like</h3>
-  <ul class="chips">{{range .TopLiked}}<li class="chip learned up">{{.Label}}</li>{{end}}</ul>
-  {{- end}}
-  {{- if .TopDisliked}}
-  <h3 class="mini">You tend to skip</h3>
-  <ul class="chips">{{range .TopDisliked}}<li class="chip learned down">{{.Label}}</li>{{end}}</ul>
-  {{- end}}
-  {{- end}}
-</section>
+</form>
 {{end}}

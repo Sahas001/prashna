@@ -1,10 +1,10 @@
 {{define "content"}}
-<div class="page-head">
+<header class="page-head">
   <h1>Interests</h1>
-  <p class="sub">What Radar looks for. Changes re-rank everything right away.</p>
-</div>
+  <p class="dek">What Radar looks for. Changes take effect right away.</p>
+</header>
 {{template "interests" .Interests}}
-{{- if .Model}}{{template "model" .Model}}{{end}}
 {{template "follows" .Authors}}
 {{template "follows" .Subjects}}
+{{- with .Model}}{{template "model" .}}{{end}}
 {{end}}
