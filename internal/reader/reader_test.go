@@ -78,7 +78,7 @@ func TestSanitizeAttributes(t *testing.T) {
 func TestExtract(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != "radar-test" {
+		if r.Header.Get("User-Agent") != "prashna-test" {
 			t.Errorf("user agent = %q", r.Header.Get("User-Agent"))
 		}
 		w.Header().Set("Content-Type", "text/html; charset=iso-8859-1")
@@ -95,7 +95,7 @@ func TestExtract(t *testing.T) {
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	e := &Extractor{HTTP: srv.Client(), UserAgent: "radar-test"}
+	e := &Extractor{HTTP: srv.Client(), UserAgent: "prashna-test"}
 	ctx := context.Background()
 
 	art, err := e.Extract(ctx, srv.URL+"/moved")
@@ -122,7 +122,7 @@ func TestExtract(t *testing.T) {
 	for _, k := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"} {
 		t.Setenv(k, "")
 	}
-	if _, err := New("radar-test").Extract(ctx, srv.URL+"/post"); !errors.Is(err, ErrBlocked) {
+	if _, err := New("prashna-test").Extract(ctx, srv.URL+"/post"); !errors.Is(err, ErrBlocked) {
 		t.Errorf("local address: err = %v", err)
 	}
 }

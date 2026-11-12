@@ -25,16 +25,18 @@ import (
 
 // Article is the readable content of a page.
 type Article struct {
-	HTML   string // sanitized: only the tags and attributes in sanitize.go
-	Byline string
-	Site   string
-	Words  int
+	HTML    string // sanitized: only the tags and attributes in sanitize.go
+	Title   string
+	Excerpt string // the page's own description, if it has one
+	Byline  string
+	Site    string
+	Words   int
 }
 
 var (
 	// ErrNotArticle means the address isn't a web page (a PDF, an image...).
 	ErrNotArticle = errors.New("not a web page")
-	// ErrNoText means the page has no article text Radar could find, as
+	// ErrNoText means the page has no article text Prashna could find, as
 	// with pages that only work with JavaScript or sit behind a sign-in.
 	ErrNoText = errors.New("no readable text found")
 	// ErrBlocked means the address points at this computer or the local
@@ -54,7 +56,7 @@ type Extractor struct {
 }
 
 // New returns an Extractor that refuses to connect to local addresses, so
-// a link in a feed can't make Radar read from the reader's own network.
+// a link in a feed can't make Prashna read from the reader's own network.
 // (When a proxy is configured, connections go to the proxy and the check
 // is left to it.)
 func New(userAgent string) *Extractor {
@@ -152,5 +154,5 @@ func FromHTML(page []byte, contentType string, base *url.URL) (Article, error) {
 	if site == "" {
 		site = strings.TrimPrefix(base.Hostname(), "www.")
 	}
-	return Article{HTML: out, Byline: strings.TrimSpace(art.Byline()), Site: strings.TrimSpace(site), Words: words}, nil
+	return Article{HTML: out, Title: strings.TrimSpace(art.Title()), Excerpt: strings.TrimSpace(art.Excerpt()), Byline: strings.TrimSpace(art.Byline()), Site: strings.TrimSpace(site), Words: words}, nil
 }

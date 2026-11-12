@@ -1,12 +1,12 @@
 {{define "content"}}
 <div class="gate">
-  <p class="wordmark wordmark-large">Radar</p>
+  <p class="wordmark wordmark-large">Prashna</p>
   <form method="post" action="/login" class="gate-form">
     <input type="hidden" name="next" value="{{.Next}}">
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
     {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
-    <button type="submit" class="btn btn-primary">Open Radar</button>
+    <button type="submit" class="btn btn-primary">Open Prashna</button>
   </form>
 </div>
 {{end}}

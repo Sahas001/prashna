@@ -1,4 +1,4 @@
-// Radar: small enhancements on top of server-rendered pages and htmx.
+// Prashna: small enhancements on top of server-rendered pages and htmx.
 "use strict";
 
 if ("serviceWorker" in navigator) {
@@ -6,7 +6,7 @@ if ("serviceWorker" in navigator) {
 }
 
 // Opening a piece keeps the real link (so it can be copied or opened in a
-// new tab as usual) and quietly tells Radar, which counts it as read.
+// new tab as usual) and quietly tells Prashna, which counts it as read.
 function noteOpen(e) {
   const a = e.target.closest("a[data-open]");
   if (!a || (e.type === "auxclick" && e.button !== 1)) return;
@@ -38,7 +38,7 @@ document.addEventListener("htmx:responseError", (e) => {
   if (e.detail.xhr.status === 401) return; // HX-Redirect to sign-in handles it
   toast("That didn't work. Please try again.");
 });
-document.addEventListener("htmx:sendError", () => toast("Radar isn't reachable. Is it still running?"));
+document.addEventListener("htmx:sendError", () => toast("Prashna isn't reachable. Is it still running?"));
 document.addEventListener("htmx:afterRequest", (e) => {
   if (e.detail.successful && e.detail.elt.matches("[data-saves]")) toast("Note saved");
 });
@@ -167,3 +167,18 @@ document.addEventListener("click", (e) => {
   const quote = e.target.closest("#highlights .hl-quote");
   if (quote) flash(document.querySelector('mark.hl-mark[data-hl="' + quote.closest(".hl").id.slice(3) + '"]'));
 });
+
+// ---- Desktop app window ----
+// A window has no tabs and no back button. Links that leave Prashna go to
+// the real browser, and the masthead gets a back arrow.
+if ("window" in document.documentElement.dataset) {
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-back]")) return history.back();
+    const a = e.target.closest("a[href]");
+    if (!a || !/^https?:$/.test(a.protocol) || a.origin === location.origin) return;
+    e.preventDefault();
+    fetch("/open-outside", { method: "POST", body: new URLSearchParams({ url: a.href }) })
+      .then((r) => { if (!r.ok) throw r; })
+      .catch(() => toast("Couldn't open that in your browser."));
+  });
+}

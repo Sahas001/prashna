@@ -116,7 +116,7 @@ const rampRatings = 20
 // ReportKey is the settings key under which the last Report is stored.
 const ReportKey = "model_report"
 
-// Report describes the last training run, for `radar model` and the UI.
+// Report describes the last training run, for `prashna model` and the UI.
 type Report struct {
 	TrainedAt    time.Time
 	Ratings      int

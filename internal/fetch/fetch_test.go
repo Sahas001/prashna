@@ -12,7 +12,7 @@ import (
 )
 
 func testClient() *Client {
-	c := NewClient("radar-test")
+	c := NewClient("prashna-test")
 	c.RetryDelay = time.Millisecond
 	return c
 }
@@ -36,7 +36,7 @@ func TestArXivFetch(t *testing.T) {
 		if q.Get("sortBy") != "submittedDate" || q.Get("max_results") != "50" {
 			t.Errorf("unexpected query %v", q)
 		}
-		if r.UserAgent() != "radar-test" {
+		if r.UserAgent() != "prashna-test" {
 			t.Errorf("user agent = %q", r.UserAgent())
 		}
 		w.Write(fixture)

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/reader"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/reader"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // readable reports whether an item opens in the reader: pieces that are
@@ -172,15 +172,15 @@ func (s *Server) keepText(it item.Item) {
 func readProblem(err error) string {
 	switch {
 	case errors.Is(err, reader.ErrNotArticle):
-		return "This isn’t a page Radar can show here. It may be a PDF, a video or a download."
+		return "This isn’t a page Prashna can show here. It may be a PDF, a video or a download."
 	case errors.Is(err, reader.ErrNoText):
-		return "Radar couldn’t find the text of this piece. Some sites need a sign-in, or only work in a browser."
+		return "Prashna couldn’t find the text of this piece. Some sites need a sign-in, or only work in a browser."
 	case errors.Is(err, reader.ErrBlocked):
-		return "This link points to a private address, so Radar didn’t open it."
+		return "This link points to a private address, so Prashna didn’t open it."
 	case errors.Is(err, context.DeadlineExceeded):
 		return "The site took too long to answer."
 	}
-	return "Radar couldn’t get this piece from its site. You may be offline, or the site may be refusing."
+	return "Prashna couldn’t get this piece from its site. You may be offline, or the site may be refusing."
 }
 
 // ---- Highlights and notes ----

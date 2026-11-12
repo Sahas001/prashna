@@ -1,4 +1,4 @@
-// Package server is Radar's app: server-rendered pages enhanced with htmx,
+// Package server is Prashna's app: server-rendered pages enhanced with htmx,
 // installable as a PWA. It runs on the reader's own computer.
 package server
 
@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sahas001/radar/internal/config"
-	"github.com/Sahas001/radar/internal/reader"
-	"github.com/Sahas001/radar/internal/score"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/config"
+	"github.com/Sahas001/prashna/internal/reader"
+	"github.com/Sahas001/prashna/internal/score"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 type Server struct {
@@ -33,6 +33,9 @@ type Server struct {
 	// ReadText fetches a page and returns its readable text, for the
 	// in-app reader. Optional: without it only stored texts can be read.
 	ReadText func(ctx context.Context, url string) (reader.Article, error)
+	// OpenExternal shows an address in the reader's real browser. The
+	// desktop app's window uses it for links to other sites. Optional.
+	OpenExternal func(url string) error
 	// Settings and SaveSettings back the Settings page. Optional.
 	Settings     func(ctx context.Context) config.Settings
 	SaveSettings func(ctx context.Context, s config.Settings) error
@@ -56,7 +59,7 @@ func (s *Server) Handler() http.Handler {
 	// Public.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte("radar ok\n"))
+		w.Write([]byte("prashna ok\n"))
 	})
 	mux.Handle("GET /static/", staticHandler())
 	mux.HandleFunc("GET /manifest.webmanifest", serveManifest)
@@ -64,6 +67,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /offline", func(w http.ResponseWriter, r *http.Request) {
 		s.renderPage(w, r, http.StatusOK, "offline", "Offline", "", nil)
 	})
+	mux.HandleFunc("GET /window", s.windowStart)
 	mux.HandleFunc("GET /login", s.loginPage)
 	mux.HandleFunc("POST /login", s.login)
 	mux.HandleFunc("POST /logout", s.logout)
@@ -83,6 +87,9 @@ func (s *Server) Handler() http.Handler {
 		"POST /items/{id}/rate/{vote}":  s.rateItem,
 		"POST /items/{id}/opened":       s.openedItem,
 		"POST /items/{id}/{action}":     s.itemAction,
+		"GET /add":                      s.addPage,
+		"POST /add":                     s.addLink,
+		"POST /open-outside":            s.openOutside,
 		"GET /read/{id}":                s.readPage,
 		"GET /read/{id}/text":           s.readText,
 		"POST /items/{id}/highlights":   s.addHighlight,

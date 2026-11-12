@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/reader"
+	"github.com/Sahas001/prashna/internal/reader"
 )
 
 func TestReader(t *testing.T) {

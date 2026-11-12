@@ -1,4 +1,4 @@
-// Command radar is a personal reading app: it gathers papers, articles,
+// Command prashna is a personal reading app: it gathers papers, articles,
 // discussions and books from free sources, learns what you like, and puts
 // together a small daily edition. It runs entirely on your own computer.
 package main
@@ -17,34 +17,37 @@ import (
 	"syscall"
 	_ "time/tzdata" // correct local dates on minimal systems without zoneinfo
 
-	"github.com/Sahas001/radar/internal/config"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/learn"
-	"github.com/Sahas001/radar/internal/pipeline"
-	"github.com/Sahas001/radar/internal/score"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/config"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/learn"
+	"github.com/Sahas001/prashna/internal/pipeline"
+	"github.com/Sahas001/prashna/internal/score"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // version is set at build time: -ldflags "-X main.version=v1.2.3".
 var version = "dev"
 
-const usage = `Radar: a reading app that learns what you like.
+const usage = `Prashna: a reading app that learns what you like.
 
 Usage:
-  radar                 open Radar in your browser (starts it if needed)
-  radar <command>
+  prashna                 open Prashna (starts it if needed): in its own window in
+                        the desktop app, otherwise in your browser
+  prashna <command>
 
 Commands:
-  run         run Radar without opening a browser (for autostart and servers)
+  run         run Prashna without opening a browser (for autostart and servers)
   fetch       check all sources now
   top         list the best unread items in the terminal
-  model       show what Radar has learned from your ratings
-  autostart   start Radar when you log in: radar autostart on|off|status
+  model       show what Prashna has learned from your ratings
+  autostart   start Prashna when you log in: prashna autostart on|off|status
+  launcher    desktop app on Linux: add Prashna to the applications menu
+              (prashna launcher on|off)
   version     print the version
 
 Options:
-  -data DIR   where Radar keeps its data (default: your user config folder,
-              or $RADAR_HOME)
+  -data DIR   where Prashna keeps its data (default: your user config folder,
+              or $PRASHNA_HOME)
   -config F   optional config file (default: <data>/config.yaml)
   -v          verbose logging
 `
@@ -54,7 +57,7 @@ func main() {
 	defer stop()
 	if err := run(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		if !errors.Is(err, flag.ErrHelp) {
-			fmt.Fprintln(os.Stderr, "radar:", err)
+			fmt.Fprintln(os.Stderr, "prashna:", err)
 		}
 		os.Exit(1)
 	}
@@ -71,7 +74,7 @@ type app struct {
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
-	fs := flag.NewFlagSet("radar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("prashna", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { fmt.Fprint(stderr, usage) }
 	dataFlag := fs.String("data", "", "data folder")
@@ -86,7 +89,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	switch cmd {
 	case "version", "-version", "--version":
-		fmt.Fprintln(stdout, "radar", version)
+		fmt.Fprintln(stdout, "prashna", version)
 		return nil
 	case "help":
 		fs.Usage()
@@ -102,6 +105,21 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	if abs, err := filepath.Abs(dataDir); err == nil {
 		dataDir = abs
+	}
+	// Data from before the app was renamed comes along. (Config is loaded
+	// after this, from the folder's new place.)
+	var adopted []string
+	if *dataFlag == "" {
+		if moved, err := adoptLegacyDataDir(dataDir); err != nil {
+			return fmt.Errorf("move your Radar data to %s: %w", dataDir, err)
+		} else if moved {
+			adopted = append(adopted, "moved your Radar data folder to "+dataDir)
+		}
+	}
+	if renamed, err := adoptLegacyFiles(dataDir); err != nil {
+		return fmt.Errorf("rename your Radar database in %s: %w", dataDir, err)
+	} else if renamed {
+		adopted = append(adopted, "renamed radar.db to "+config.DefaultDBName)
 	}
 	cfgPath := *cfgFlag
 	if cfgPath == "" {
@@ -119,7 +137,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	logOut := stderr
 	a := &app{cfg: cfg, dataDir: dataDir, cfgPath: cfgPath, out: stdout}
 
-	// `radar <cmd> -h` must not create a data folder or database. Commands
+	// `prashna <cmd> -h` must not create a data folder or database. Commands
 	// parse their flags before touching the store, so a nil store is safe.
 	if slices.ContainsFunc(cmdArgs, func(s string) bool { return s == "-h" || s == "-help" || s == "--help" }) {
 		a.log = slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: level}))
@@ -132,21 +150,29 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if cmd == "open" || cmd == "run" {
 		// Long-running: also log to a file, since autostarted copies have
 		// no terminal.
-		if f, err := openLog(filepath.Join(dataDir, "radar.log")); err == nil {
+		if f, err := openLog(filepath.Join(dataDir, "prashna.log")); err == nil {
 			defer f.Close()
 			logOut = io.MultiWriter(stderr, f)
 		}
 	}
 	a.log = slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{Level: level}))
+	for _, what := range adopted {
+		a.log.Info("Radar is now Prashna: " + what)
+	}
 
 	if cmd == "open" {
 		// Already running? Just show it.
 		if url, ok := a.runningURL(ctx); ok {
-			a.log.Info("Radar is already running", "url", url)
+			a.log.Info("Prashna is already running", "url", url)
+			if hasWindow {
+				// Started at login and fetching in the background: this
+				// is just its window.
+				return showWindow(ctx, a.windowID(), url+"window")
+			}
 			return openBrowser(url)
 		}
 	}
-	if cmd == "autostart" {
+	if cmd == "autostart" || cmd == "launcher" {
 		return a.dispatch(ctx, cmd, cmdArgs, fs)
 	}
 
@@ -180,6 +206,8 @@ func (a *app) dispatch(ctx context.Context, cmd string, args []string, fs *flag.
 		return a.model(ctx)
 	case "autostart":
 		return a.autostart(args)
+	case "launcher":
+		return a.launcher(args)
 	default:
 		fs.Usage()
 		return fmt.Errorf("unknown command %q", cmd)

@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/config"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/learn"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/config"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/learn"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // ---- Interests and book follows ----
@@ -461,13 +461,13 @@ func (s *Server) exportOPML(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, "export opml", err)
 		return
 	}
-	doc := opml{Version: "2.0", Title: "Radar feeds"}
+	doc := opml{Version: "2.0", Title: "Prashna feeds"}
 	for _, f := range feeds {
 		name := cmpOr(f.Name, cmpOr(f.State.Title, f.URL))
 		doc.Body = append(doc.Body, opmlEntry{Text: name, Title: name, Type: "rss", XMLURL: f.URL})
 	}
 	w.Header().Set("Content-Type", "text/x-opml; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="radar-feeds.opml"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="prashna-feeds.opml"`)
 	io.WriteString(w, xml.Header)
 	enc := xml.NewEncoder(w)
 	enc.Indent("", "  ")

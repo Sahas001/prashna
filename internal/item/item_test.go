@@ -66,7 +66,7 @@ func TestNormalize(t *testing.T) {
 }
 
 func TestDedupeKey(t *testing.T) {
-	if k := DedupeKey(Item{Title: "Show HN: Radar!"}); k != "" {
+	if k := DedupeKey(Item{Title: "Show HN: Prashna!"}); k != "" {
 		t.Errorf("short title should not be dedupe-eligible, got %q", k)
 	}
 	a := DedupeKey(Item{Title: "Scaling Laws for Neural Language Models"})

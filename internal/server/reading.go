@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/edition"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/edition"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 const pageSize = 20
@@ -244,7 +244,7 @@ var shelves = []struct {
 }{
 	{store.ShelfToRead, "To read", "Nothing saved. Use Save on anything you want to come back to."},
 	{store.ShelfFavorites, "Favorites", "Mark pieces you love with More like this, and they collect here for rereading."},
-	{store.ShelfRead, "Read", "Everything you open from Radar is kept here, most recent first."},
+	{store.ShelfRead, "Read", "Everything you open from Prashna is kept here, most recent first."},
 }
 
 func (s *Server) library(w http.ResponseWriter, r *http.Request) {

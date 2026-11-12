@@ -1,9 +1,9 @@
 {{define "content"}}
 <div class="welcome">
   <header class="welcome-head">
-    <p class="wordmark wordmark-large">Radar</p>
+    <p class="wordmark wordmark-large">Prashna</p>
     <h1>What do you like to read?</h1>
-    <p class="dek">Pick a few starting points. Each morning Radar puts together a short edition from them, and learns from what you open, save and mark. You can change all of this later.</p>
+    <p class="dek">Pick a few starting points. Each morning Prashna puts together a short edition from them, and learns from what you open, save and mark. You can change all of this later.</p>
   </header>
   <form method="post" action="/welcome" enctype="multipart/form-data" class="welcome-form" hx-boost="false">
     {{- if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
@@ -22,18 +22,18 @@
     <div class="field">
       <label for="authors">Authors you love <span class="opt">optional, one per line</span></label>
       <textarea id="authors" name="authors" rows="3" placeholder="Ursula K. Le Guin&#10;Ted Chiang">{{.Authors}}</textarea>
-      <p class="hint">Radar watches for their new books.</p>
+      <p class="hint">Prashna watches for their new books.</p>
     </div>
     <div class="field">
       <label for="opml">Already use a feed reader? <span class="opt">optional</span></label>
       <input id="opml" type="file" name="opml" accept=".opml,.xml,text/xml,application/xml">
-      <p class="hint">Import its OPML export and Radar will follow the same feeds.</p>
+      <p class="hint">Import its OPML export and Prashna will follow the same feeds.</p>
     </div>
     <div class="welcome-foot">
       <button type="submit" class="btn btn-primary btn-large">Make my first edition</button>
       <button type="submit" name="skip" value="1" class="btn btn-quiet" formnovalidate>I’ll set things up myself</button>
     </div>
   </form>
-  <p class="quiet fineprint">Radar runs on this computer. What you read and rate never leaves it.</p>
+  <p class="quiet fineprint">Prashna runs on this computer. What you read and rate never leaves it.</p>
 </div>
 {{end}}

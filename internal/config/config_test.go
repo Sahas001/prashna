@@ -13,7 +13,7 @@ func TestLoadDefaultsAndOverlay(t *testing.T) {
 	if err != nil || !missing {
 		t.Fatalf("missing file: missing=%v err=%v", missing, err)
 	}
-	if cfg.DBPath != filepath.Join(dir, "radar.db") || !cfg.LocalOnly() {
+	if cfg.DBPath != filepath.Join(dir, "prashna.db") || !cfg.LocalOnly() {
 		t.Errorf("defaults: db=%q local=%v", cfg.DBPath, cfg.LocalOnly())
 	}
 
@@ -41,11 +41,11 @@ func TestLoadDefaultsAndOverlay(t *testing.T) {
 }
 
 func TestDataDir(t *testing.T) {
-	t.Setenv("RADAR_HOME", "/tmp/radar-test-home")
-	if d, err := DataDir(); err != nil || d != "/tmp/radar-test-home" {
-		t.Errorf("RADAR_HOME: %q %v", d, err)
+	t.Setenv("PRASHNA_HOME", "/tmp/prashna-test-home")
+	if d, err := DataDir(); err != nil || d != "/tmp/prashna-test-home" {
+		t.Errorf("PRASHNA_HOME: %q %v", d, err)
 	}
-	t.Setenv("RADAR_HOME", "")
+	t.Setenv("PRASHNA_HOME", "")
 	if d, err := DataDir(); err != nil || d == "" {
 		t.Errorf("default data dir: %q %v", d, err)
 	}
@@ -86,7 +86,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 
 func TestExampleConfigLoads(t *testing.T) {
 	dir := t.TempDir()
-	cfg, missing, err := Load("../../radar.example.yaml", dir)
+	cfg, missing, err := Load("../../prashna.example.yaml", dir)
 	if err != nil || missing {
 		t.Fatalf("example config: missing=%v err=%v", missing, err)
 	}

@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // topic is a starting point offered on the welcome screen: a few weighted

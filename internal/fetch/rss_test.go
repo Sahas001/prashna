@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 func TestParseRSS2(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 // SettingsKey is where Settings are stored in the database.

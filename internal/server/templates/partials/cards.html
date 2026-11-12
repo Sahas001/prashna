@@ -119,7 +119,7 @@
     <p class="results-count">{{len .Cards}} {{plural (len .Cards) "result" "results"}}{{if eq (len .Cards) 50}} (showing the best 50){{end}}</p>
     <div class="stories">{{range .Cards}}{{template "story" .}}{{end}}</div>
     {{- else}}
-    <p class="quiet">Nothing matches “{{.Query}}”. Search looks at titles, summaries, authors and tags of everything Radar has found.</p>
+    <p class="quiet">Nothing matches “{{.Query}}”. Search looks at titles, summaries, authors and tags of everything Prashna has found.</p>
     {{- end}}
   {{- end}}
 </div>

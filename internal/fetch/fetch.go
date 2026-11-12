@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 // Fetcher pulls the latest items from one source. Fetchers that query

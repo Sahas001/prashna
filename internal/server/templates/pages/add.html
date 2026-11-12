@@ -1,0 +1,18 @@
+{{define "content"}}
+<header class="page-head">
+  <a class="back" href="/library">Library</a>
+  <h1>Add a link</h1>
+  <p class="dek">Found something elsewhere? Save it to your reading list. Prashna keeps its text on this computer, to read here with highlights and notes.</p>
+</header>
+<form class="add-form" method="post" action="/add">
+  <input type="url" name="url" value="{{.URL}}" placeholder="https://…" aria-label="Web address" required{{if not .URL}} autofocus{{end}}>
+  <button type="submit" class="btn btn-primary">Save to library</button>
+</form>
+{{- if .Error}}<p class="add-error" role="alert">{{.Error}}</p>{{end}}
+<section class="add-how" aria-labelledby="h-bookmarklet">
+  <h2 class="section-title" id="h-bookmarklet"><span>Save from any page</span></h2>
+  <p>Drag this button to your browser’s bookmarks bar. Then, on any page worth keeping, click it: Prashna opens with the address filled in.</p>
+  <a class="btn bookmarklet" href="{{.Bookmarklet}}" hx-boost="false" title="Drag me to your bookmarks bar">Save to Prashna</a>
+  <p class="quiet">It only works while Prashna is running on this computer, and it sends the page’s address to Prashna and nowhere else.</p>
+</section>
+{{end}}

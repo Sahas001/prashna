@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 func TestOpenLibrary(t *testing.T) {
@@ -79,7 +79,7 @@ func TestWikidata(t *testing.T) {
 	fixture := serveFile(t, "testdata/wikidata.json")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("query")
-		if r.Header.Get("Accept") != "application/sparql-results+json" || r.UserAgent() != "radar-test" {
+		if r.Header.Get("Accept") != "application/sparql-results+json" || r.UserAgent() != "prashna-test" {
 			t.Errorf("headers: %v", r.Header)
 		}
 		// Both the typed and the title-cased name are queried.

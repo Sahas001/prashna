@@ -10,11 +10,11 @@ import (
 	"strings"
 )
 
-// autostart makes Radar start in the background when you log in, so the
-// edition is ready and `radar` (or a bookmark) opens instantly.
+// autostart makes Prashna start in the background when you log in, so the
+// edition is ready and `prashna` (or a bookmark) opens instantly.
 func (a *app) autostart(args []string) error {
 	if len(args) != 1 || (args[0] != "on" && args[0] != "off" && args[0] != "status") {
-		return errors.New("usage: radar autostart on|off|status")
+		return errors.New("usage: prashna autostart on|off|status")
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -39,7 +39,7 @@ func (a *app) autostart(args []string) error {
 		return nil
 	case "off":
 		if runtime.GOOS == "linux" && strings.HasSuffix(f, ".service") {
-			exec.Command("systemctl", "--user", "disable", "--now", "radar.service").Run()
+			exec.Command("systemctl", "--user", "disable", "--now", "prashna.service").Run()
 		}
 		if runtime.GOOS == "darwin" {
 			exec.Command("launchctl", "unload", f).Run()
@@ -65,7 +65,7 @@ func (a *app) autostart(args []string) error {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>app.radar</string>
+  <key>Label</key><string>app.prashna</string>
   <key>ProgramArguments</key>
   <array>` + argXML.String() + `
   </array>
@@ -75,17 +75,17 @@ func (a *app) autostart(args []string) error {
 </plist>
 `
 	case runtime.GOOS == "windows":
-		// A .vbs in the Startup folder runs Radar without a console window.
+		// A .vbs in the Startup folder runs Prashna without a console window.
 		quoted := make([]string, len(runArgs))
 		for i, s := range runArgs {
 			quoted[i] = `""` + s + `""`
 		}
 		content = `CreateObject("WScript.Shell").Run "` + strings.Join(quoted, " ") + `", 0, False` + "\r\n"
 	case strings.HasSuffix(f, ".service"):
-		content = "[Unit]\nDescription=Radar reading app\nAfter=network-online.target\n\n[Service]\nExecStart=" +
+		content = "[Unit]\nDescription=Prashna reading app\nAfter=network-online.target\n\n[Service]\nExecStart=" +
 			shellJoin(runArgs) + "\nRestart=on-failure\n\n[Install]\nWantedBy=default.target\n"
 	default:
-		content = "[Desktop Entry]\nType=Application\nName=Radar\nExec=" + shellJoin(runArgs) + "\nX-GNOME-Autostart-enabled=true\nNoDisplay=true\n"
+		content = "[Desktop Entry]\nType=Application\nName=Prashna\nExec=" + shellJoin(runArgs) + "\nX-GNOME-Autostart-enabled=true\nNoDisplay=true\n"
 	}
 	if err := os.WriteFile(f, []byte(content), 0o644); err != nil {
 		return err
@@ -94,11 +94,11 @@ func (a *app) autostart(args []string) error {
 	case runtime.GOOS == "darwin":
 		exec.Command("launchctl", "load", "-w", f).Run()
 	case strings.HasSuffix(f, ".service"):
-		if out, err := exec.Command("systemctl", "--user", "enable", "--now", "radar.service").CombinedOutput(); err != nil {
+		if out, err := exec.Command("systemctl", "--user", "enable", "--now", "prashna.service").CombinedOutput(); err != nil {
 			return fmt.Errorf("systemctl: %v: %s", err, out)
 		}
 	}
-	fmt.Fprintf(a.out, "Autostart is on: Radar will start when you log in (%s).\n", f)
+	fmt.Fprintf(a.out, "Autostart is on: Prashna will start when you log in (%s).\n", f)
 	return nil
 }
 
@@ -110,18 +110,18 @@ func autostartFile() (string, error) {
 	}
 	switch runtime.GOOS {
 	case "darwin":
-		return filepath.Join(home, "Library", "LaunchAgents", "app.radar.plist"), nil
+		return filepath.Join(home, "Library", "LaunchAgents", "app.prashna.plist"), nil
 	case "windows":
-		return filepath.Join(os.Getenv("APPDATA"), "Microsoft", "Windows", "Start Menu", "Programs", "Startup", "Radar.vbs"), nil
+		return filepath.Join(os.Getenv("APPDATA"), "Microsoft", "Windows", "Start Menu", "Programs", "Startup", "Prashna.vbs"), nil
 	default:
 		cfg, err := os.UserConfigDir()
 		if err != nil {
 			return "", err
 		}
 		if _, err := exec.LookPath("systemctl"); err == nil {
-			return filepath.Join(cfg, "systemd", "user", "radar.service"), nil
+			return filepath.Join(cfg, "systemd", "user", "prashna.service"), nil
 		}
-		return filepath.Join(cfg, "autostart", "radar.desktop"), nil
+		return filepath.Join(cfg, "autostart", "prashna.desktop"), nil
 	}
 }
 

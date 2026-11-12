@@ -1,5 +1,5 @@
 /*
-  Radar. Set like a small, well-made periodical: Literata for reading,
+  Prashna. Set like a small, well-made periodical: Literata for reading,
   the system sans for the furniture around it, warm paper and ink, and a
   single brick-red accent used sparingly.
 */
@@ -531,7 +531,7 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 
 /* ---- Reader ---- */
 
-.reader { max-width: 40rem; margin: 0 auto; }
+.reader { margin: 0 auto; } /* as wide as the page column, like the feed */
 .reader-head { padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .reader-title {
   margin-top: 10px; font-family: var(--serif); font-weight: 620;
@@ -604,6 +604,28 @@ mark.hl-mark.flash, .hl.flash .hl-quote { background: var(--hl-strong); }
 .hl-row textarea { flex: 1; min-height: 38px; field-sizing: content; font-size: 14.5px; }
 .hl-hint { padding: 16px 0 0; font-family: var(--serif); font-size: 1rem; }
 .reader-note textarea { width: 100%; margin-top: 14px; field-sizing: content; min-height: 5.5em; font-family: var(--serif); font-size: 1.02rem; line-height: 1.55; }
+
+/* Desktop app window */
+.win-back {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin: 0 -28px 0 -8px; flex: none;
+  border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer;
+}
+.win-back:hover { color: var(--ink); background: var(--paper-2); }
+.win-back svg.i { width: 20px; height: 20px; }
+@media (max-width: 780px) {
+  [data-window] .masthead-inner { position: relative; }
+  .win-back { position: absolute; left: 10px; margin: 0; }
+}
+
+/* Add a link */
+.add-link { white-space: nowrap; font-family: var(--sans); font-size: 14px; font-weight: 500; }
+.add-form { display: flex; gap: 10px; flex-wrap: wrap; max-width: 44rem; }
+.add-form input { flex: 1; min-width: 14rem; }
+.add-form .btn.htmx-request, .add-form.htmx-request .btn { opacity: .5; pointer-events: none; }
+.add-error { margin-top: 14px; color: var(--accent); font-size: 14.5px; }
+.add-how { margin-top: 44px; max-width: 40rem; }
+.add-how p { margin-top: 12px; font-family: var(--serif); font-size: 1.04rem; line-height: 1.55; color: var(--ink-2); }
+.bookmarklet { display: inline-block; margin-top: 16px; cursor: grab; }
 
 /* Library > Highlights */
 .noted { padding: 24px 0 22px; }

@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/fetch"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/learn"
-	"github.com/Sahas001/radar/internal/score"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/fetch"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/learn"
+	"github.com/Sahas001/prashna/internal/score"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 type fakeFetcher struct {
@@ -30,7 +30,7 @@ var now = time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
 
 func newPipeline(t *testing.T, fetchers ...fetch.Fetcher) *Pipeline {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "radar.db"))
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "prashna.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

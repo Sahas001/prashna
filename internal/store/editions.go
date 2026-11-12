@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 // ---- Edition candidates ----
@@ -31,7 +31,8 @@ func (s *Store) Candidates(ctx context.Context, q CandidateQuery) ([]item.Item, 
 	if q.Limit <= 0 {
 		return nil, nil
 	}
-	where := "digested_at IS NULL AND feedback = 0 AND type = ? AND score >= ?"
+	// Links the reader added themselves are already theirs: not news.
+	where := "digested_at IS NULL AND feedback = 0 AND type = ? AND score >= ? AND source != '" + item.SourceSaved + "'"
 	args := []any{string(q.Type), q.MinScore}
 	if !q.Since.IsZero() {
 		where += " AND fetched_at >= ?"
@@ -190,7 +191,7 @@ func (s sectionScanner) Scan(dest ...any) error {
 
 // ---- Reading: opens, library, search ----
 
-// RecordOpen notes that the item was opened from Radar: it counts the
+// RecordOpen notes that the item was opened from Prashna: it counts the
 // open, stamps the time, and marks the item read the first time.
 func (s *Store) RecordOpen(ctx context.Context, id string) (item.Item, error) {
 	now := time.Now().Unix()

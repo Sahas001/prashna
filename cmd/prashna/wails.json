@@ -1,0 +1,15 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Prashna",
+  "outputfilename": "prashna",
+  "frontend:install": "",
+  "frontend:build": "",
+  "author": { "name": "Sahas Timilsina" },
+  "info": {
+    "companyName": "Prashna",
+    "productName": "Prashna",
+    "productVersion": "1.0.0",
+    "copyright": "",
+    "comments": "A reading app that learns what you like"
+  }
+}

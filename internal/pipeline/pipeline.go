@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sahas001/radar/internal/fetch"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/learn"
-	"github.com/Sahas001/radar/internal/score"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/fetch"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/learn"
+	"github.com/Sahas001/prashna/internal/score"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 type Pipeline struct {

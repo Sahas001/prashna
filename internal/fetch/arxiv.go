@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 // ArXivDefaultBaseURL is the arXiv query API endpoint.

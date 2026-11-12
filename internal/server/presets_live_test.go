@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/fetch"
+	"github.com/Sahas001/prashna/internal/fetch"
 )
 
 // TestPresetFeedsLive checks every welcome-screen feed parses. It needs the
-// network, so it only runs with RADAR_LIVE=1.
+// network, so it only runs with PRASHNA_LIVE=1.
 func TestPresetFeedsLive(t *testing.T) {
-	if os.Getenv("RADAR_LIVE") == "" {
-		t.Skip("set RADAR_LIVE=1 to check preset feeds over the network")
+	if os.Getenv("PRASHNA_LIVE") == "" {
+		t.Skip("set PRASHNA_LIVE=1 to check preset feeds over the network")
 	}
-	c := fetch.NewClient("Radar/1.0 (personal reading app)")
+	c := fetch.NewClient("Prashna/1.0 (personal reading app)")
 	c.MaxRetries = 1
 	for _, tp := range topics {
 		for _, f := range tp.Feeds {

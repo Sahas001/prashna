@@ -49,8 +49,8 @@ func staticHandler() http.Handler {
 }
 
 const manifest = `{
-  "name": "Radar",
-  "short_name": "Radar",
+  "name": "Prashna",
+  "short_name": "Prashna",
   "description": "A daily edition of things worth reading, chosen for you",
   "start_url": "/",
   "scope": "/",
@@ -76,7 +76,7 @@ func serveManifest(w http.ResponseWriter, r *http.Request) {
 // network-first; the latest copies of Today and the library are kept
 // so they can be read offline. htmx requests and POSTs always go to the
 // network. It must be served from / to control the whole origin.
-const serviceWorker = `const VERSION = "radar-__VERSION__";
+const serviceWorker = `const VERSION = "prashna-__VERSION__";
 const SHELL = __SHELL__;
 const OFFLINE_PAGES = ["/", "/library"];
 
@@ -87,7 +87,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== "radar-pages").map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== "prashna-pages").map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -109,12 +109,12 @@ self.addEventListener("fetch", (e) => {
         .then((res) => {
           if (res.ok && !res.redirected && OFFLINE_PAGES.includes(url.pathname) && !url.search) {
             const copy = res.clone();
-            caches.open("radar-pages").then((c) => c.put(url.pathname, copy));
+            caches.open("prashna-pages").then((c) => c.put(url.pathname, copy));
           }
           return res;
         })
         .catch(() =>
-          caches.open("radar-pages")
+          caches.open("prashna-pages")
             .then((c) => c.match(url.pathname))
             .then((hit) => hit || caches.match("/offline"))
         )

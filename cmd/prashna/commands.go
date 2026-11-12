@@ -12,11 +12,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/Sahas001/radar/internal/config"
-	"github.com/Sahas001/radar/internal/edition"
-	"github.com/Sahas001/radar/internal/fetch"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/config"
+	"github.com/Sahas001/prashna/internal/edition"
+	"github.com/Sahas001/prashna/internal/fetch"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // fetchers builds the enabled fetchers from the current settings,
@@ -199,7 +199,7 @@ func (a *app) editionOptions(cfg config.Config) edition.Options {
 }
 
 // ensureEdition rescores (so recency is current) and makes today's edition
-// if there isn't one yet. Nothing is made before the reader has told Radar
+// if there isn't one yet. Nothing is made before the reader has told Prashna
 // what they like: an edition of whatever happened to arrive first would
 // take the day's slot.
 func (a *app) ensureEdition(ctx context.Context) (bool, error) {
@@ -284,7 +284,7 @@ func (a *app) top(ctx context.Context, args []string) error {
 		return err
 	}
 	if len(items) == 0 {
-		fmt.Fprintln(a.out, "Nothing yet. Run 'radar fetch' first.")
+		fmt.Fprintln(a.out, "Nothing yet. Run 'prashna fetch' first.")
 		return nil
 	}
 	tw := tabwriter.NewWriter(a.out, 0, 0, 2, ' ', 0)
@@ -302,7 +302,7 @@ func (a *app) top(ctx context.Context, args []string) error {
 
 func (a *app) feedback(ctx context.Context, args []string) error {
 	if len(args) != 2 {
-		return errors.New("usage: radar feedback <id> up|down|clear")
+		return errors.New("usage: prashna feedback <id> up|down|clear")
 	}
 	fb, ok := map[string]item.Feedback{"up": item.Liked, "down": item.Disliked, "clear": item.Neutral}[args[1]]
 	if !ok {

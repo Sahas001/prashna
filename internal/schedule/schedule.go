@@ -1,5 +1,5 @@
 // Package schedule runs periodic jobs (fetch every N hours, digest daily
-// at a set time) inside `radar serve`, so no cron is needed.
+// at a set time) inside `prashna serve`, so no cron is needed.
 package schedule
 
 import (
