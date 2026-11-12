@@ -162,7 +162,8 @@ func TestTodayMakesAndShowsEdition(t *testing.T) {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
 	for _, want := range []string{"Edition 1", "Item &lt;paper&gt;", `class="lead`, "Essays &amp; articles", "Book of the week",
-		"That’s today’s edition", `data-open="` + e.items[1].ID + `"`, `href="https://blog.example.com/post"`, "matches consensus"} {
+		"That’s today’s edition", `data-open="` + e.items[0].ID + `"`, `href="https://arxiv.org/abs/2611.00001"`,
+		`<a href="/read/` + e.items[1].ID + `">`, "matches consensus"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("today missing %q", want)
 		}

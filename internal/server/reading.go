@@ -229,9 +229,14 @@ type libraryData struct {
 	Shelf store.Shelf
 	Tabs  []tab
 	Cards []card
+	Notes []annotated // the Highlights shelf
 	Next  string
 	Empty string
 }
+
+// shelfHighlights is the library tab listing highlights and notes; the
+// other shelves are lists of pieces.
+const shelfHighlights store.Shelf = "highlights"
 
 var shelves = []struct {
 	shelf        store.Shelf
@@ -262,8 +267,33 @@ func (s *Server) library(w http.ResponseWriter, r *http.Request) {
 			d.Empty = sh.empty
 		}
 	}
+	marks, err := s.Store.CountHighlights(ctx)
+	if err != nil {
+		s.serverError(w, "library", err)
+		return
+	}
+	d.Tabs = append(d.Tabs, tab{Href: "/library?shelf=" + string(shelfHighlights), Label: "Highlights", Count: marks, Active: shelf == shelfHighlights})
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	offset = max(offset, 0)
+	if shelf == shelfHighlights {
+		d.Shelf = shelf
+		d.Empty = "Select a passage while reading to highlight it. Your highlights and notes collect here."
+		d.Tabs[0].Active = false
+		notes, err := s.Store.AnnotatedItems(ctx, pageSize+1, offset)
+		if err != nil {
+			s.serverError(w, "library", err)
+			return
+		}
+		if len(notes) > pageSize {
+			notes = notes[:pageSize]
+			d.Next = fmt.Sprintf("/library?shelf=%s&offset=%d", d.Shelf, offset+pageSize)
+		}
+		for _, n := range notes {
+			d.Notes = append(d.Notes, annotated{Card: newCard(n.Item, nil, variantStory), Note: n.Note, Highlights: n.Highlights})
+		}
+		s.renderPage(w, r, http.StatusOK, "library", "Library", "library", d)
+		return
+	}
 	items, err := s.Store.Library(ctx, d.Shelf, pageSize+1, offset)
 	if err != nil {
 		s.serverError(w, "library", err)
@@ -386,7 +416,7 @@ func (s *Server) respondItem(w http.ResponseWriter, r *http.Request, it item.Ite
 	}
 	variant := r.FormValue("v")
 	switch variant {
-	case variantStory, variantLead, variantBook, variantPick:
+	case variantStory, variantLead, variantBook, variantPick, variantReader:
 	default:
 		variant = ""
 	}
@@ -447,6 +477,9 @@ func (s *Server) itemAction(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("action") {
 	case "save":
 		it, err = s.Store.SetSaved(r.Context(), id, true)
+		if err == nil {
+			s.keepText(it)
+		}
 	case "unsave":
 		it, err = s.Store.SetSaved(r.Context(), id, false)
 	case "read":

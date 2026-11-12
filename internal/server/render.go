@@ -138,6 +138,8 @@ const (
 	variantLead  = "lead"
 	variantBook  = "book"
 	variantPick  = "pick"
+	// variantReader is the actions bar on the reader page.
+	variantReader = "reader"
 )
 
 // card is an item as displayed: the shared entry (byline, snippet,
@@ -150,6 +152,7 @@ type card struct {
 	Liked    bool
 	Disliked bool
 	Reading  string // "Opened 3 times, last 2d ago"
+	ReadHref string // the piece in Radar's reader; "" if it only opens on its own site
 }
 
 func newCard(it item.Item, explain func(item.Item) []string, variant string) card {
@@ -163,6 +166,9 @@ func newCard(it item.Item, explain func(item.Item) []string, variant string) car
 		Read:     !it.ReadAt.IsZero(),
 		Liked:    it.Feedback == item.Liked,
 		Disliked: it.Feedback == item.Disliked,
+	}
+	if readable(it) {
+		c.ReadHref = "/read/" + it.ID
 	}
 	switch {
 	case it.OpenCount > 1:

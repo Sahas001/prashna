@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Sahas001/radar/internal/fetch"
+	"github.com/Sahas001/radar/internal/reader"
 	"github.com/Sahas001/radar/internal/schedule"
 	"github.com/Sahas001/radar/internal/server"
 )
@@ -48,6 +49,7 @@ func (a *app) serve(ctx context.Context, args []string, openInBrowser bool) erro
 			StartFetch:    func() { a.startFetch(true) },
 			FetchStatus:   a.fetchStatus,
 			EnsureEdition: a.ensureEdition,
+			ReadText:      reader.New(a.cfg.UserAgent).Extract,
 			Settings:      a.settings,
 			SaveSettings:  a.saveSettings,
 			Auth:          auth,

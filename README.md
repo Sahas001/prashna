@@ -32,10 +32,14 @@ The first time, Radar asks what you like to read. Pick a few topics, name author
   - **Favorites**: things you marked *More like this*, kept for rereading.
   - **Read**: everything you've opened, most recent first, with how many times you've opened each.
 
+  - **Highlights**: every passage you've marked and every note you've written, newest first.
+
   Once in a while, Today also brings back something from your library that you haven't opened in a while.
 - **Archive**: every past edition, plus the things you marked *Less*.
 - **Search** covers everything Radar has ever found you.
 - **Interests**, **Feeds** and **Settings** are where you tell it more.
+
+Essays and discussions open in Radar's own **reader**: just the text, set for reading, without the site around it. The text is kept on your computer (saving a piece fetches it right away), so you can read it later without the internet. Select any passage to **highlight** it, add a note to a highlight, or write a note on the whole piece. If a site won't give up its text (a sign-in wall, a PDF), the reader says so and links to the original. Papers and books open on their own pages.
 
 Each piece has three buttons: **Save**, **More like this** and **Less**. Clicking through to read it counts too. That's all Radar learns from.
 
@@ -104,14 +108,15 @@ The code is one Go module with no CGO (pure-Go SQLite), so `CGO_ENABLED=0 GOOS=w
 ```
 cmd/radar/          the app: CLI, background fetching, autostart
 internal/fetch/     arXiv, Hacker News, RSS/Atom, Open Library, Wikidata
+internal/reader/    the reader: fetch a page, keep the article, strip everything unsafe
 internal/pipeline/  fetch, deduplicate, save, rescore
 internal/score/     interest matching, TF-IDF similarity, recency
 internal/learn/     the ratings model: features, logistic regression, cross-validation
 internal/edition/   choosing and keeping each day's edition
-internal/store/     SQLite: items, editions, library, profile, migrations
+internal/store/     SQLite: items, editions, library, articles, highlights, profile, migrations
 internal/server/    pages (Go templates + htmx), PWA, sign-in
 ```
 
 ## Credits
 
-Set in [Literata](https://github.com/googlefonts/literata) (SIL Open Font License, included). Interactions use [htmx](https://htmx.org) (Zero-Clause BSD). Book data from Open Library and Wikidata (CC0).
+Set in [Literata](https://github.com/googlefonts/literata) (SIL Open Font License, included). Interactions use [htmx](https://htmx.org) (Zero-Clause BSD). The reader finds article text with [go-readability](https://codeberg.org/readeck/go-readability) (MIT), a port of Mozilla's Readability. Book data from Open Library and Wikidata (CC0).

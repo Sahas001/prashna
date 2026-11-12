@@ -6,7 +6,23 @@
 <nav class="tabs" aria-label="Shelves">
   {{- range .Tabs}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}{{if .Count}} <span class="tab-count">{{.Count}}</span>{{end}}</a>{{end}}
 </nav>
-{{- if .Cards}}
+{{- if .Notes}}
+<div class="notebook">
+  {{- range .Notes}}
+  <article class="noted">
+    {{template "meta" .Card}}
+    <h3 class="story-title">{{template "link" .Card}}</h3>
+    {{template "byline" .Card}}
+    {{- if .Note}}<p class="noted-note">{{.Note}}</p>{{end}}
+    {{- range .Highlights}}
+    <blockquote class="hl-quote">{{.Quote}}</blockquote>
+    {{- if .Note}}<p class="hl-note-text">{{.Note}}</p>{{end}}
+    {{- end}}
+  </article>
+  {{- end}}
+</div>
+{{- if .Next}}<a class="more" href="{{.Next}}">Older</a>{{end}}
+{{- else if .Cards}}
 <div class="stories">{{range .Cards}}{{template "story" .}}{{end}}</div>
 {{- if .Next}}<a class="more" href="{{.Next}}">Older</a>{{end}}
 {{- else}}

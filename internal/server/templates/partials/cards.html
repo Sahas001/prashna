@@ -9,7 +9,7 @@
 </p>
 {{end}}
 
-{{define "link"}}<a href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" data-open="{{.Item.ID}}">{{.Item.Title}}</a>{{end}}
+{{define "link"}}{{if .ReadHref}}<a href="{{.ReadHref}}">{{.Item.Title}}</a>{{else}}<a href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" data-open="{{.Item.ID}}">{{.Item.Title}}</a>{{end}}{{end}}
 
 {{define "byline"}}{{if or .Byline .Discussion}}<p class="byline">{{.Byline}}{{if .Discussion}}{{if .Byline}} · {{end}}<a href="{{.Discussion}}" target="_blank" rel="noopener noreferrer">discussion</a>{{end}}</p>{{end}}{{end}}
 
@@ -37,7 +37,7 @@
 
 {{define "story"}}
 <article class="story{{template "states" .}}" id="item-{{.Item.ID}}">
-  {{- if .Cover}}<a class="thumb" href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" tabindex="-1" data-open="{{.Item.ID}}"><img src="{{.Cover}}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>{{end}}
+  {{- if .Cover}}<a class="thumb" {{if .ReadHref}}href="{{.ReadHref}}"{{else}}href="{{.Item.URL}}" target="_blank" rel="noopener noreferrer" data-open="{{.Item.ID}}"{{end}} tabindex="-1"><img src="{{.Cover}}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>{{end}}
   {{template "meta" .}}
   <h3 class="story-title">{{template "link" .}}</h3>
   {{template "byline" .}}
@@ -88,7 +88,7 @@
 {{end}}
 
 {{define "item-update"}}
-{{- with .Card}}{{if eq .Variant "lead"}}{{template "lead" .}}{{else if eq .Variant "book"}}{{template "book" .}}{{else if eq .Variant "pick"}}{{template "pick" .}}{{else}}{{template "story" .}}{{end}}{{end}}
+{{- with .Card}}{{if eq .Variant "reader"}}{{template "reader-actions" .}}{{else if eq .Variant "lead"}}{{template "lead" .}}{{else if eq .Variant "book"}}{{template "book" .}}{{else if eq .Variant "pick"}}{{template "pick" .}}{{else}}{{template "story" .}}{{end}}{{end}}
 <span hx-swap-oob="innerHTML:.library-count">{{if .ToRead}}{{.ToRead}}{{end}}</span>
 {{- end}}
 

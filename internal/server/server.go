@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sahas001/radar/internal/config"
+	"github.com/Sahas001/radar/internal/reader"
 	"github.com/Sahas001/radar/internal/score"
 	"github.com/Sahas001/radar/internal/store"
 )
@@ -29,6 +30,9 @@ type Server struct {
 	FetchStatus func() (running bool, last time.Time, lastErr string)
 	// EnsureEdition makes today's edition if possible. Optional.
 	EnsureEdition func(ctx context.Context) (bool, error)
+	// ReadText fetches a page and returns its readable text, for the
+	// in-app reader. Optional: without it only stored texts can be read.
+	ReadText func(ctx context.Context, url string) (reader.Article, error)
 	// Settings and SaveSettings back the Settings page. Optional.
 	Settings     func(ctx context.Context) config.Settings
 	SaveSettings func(ctx context.Context, s config.Settings) error
@@ -66,36 +70,42 @@ func (s *Server) Handler() http.Handler {
 
 	// The app.
 	ui := map[string]http.HandlerFunc{
-		"GET /{$}":                     s.today,
-		"GET /welcome":                 s.welcomePage,
-		"POST /welcome":                s.welcome,
-		"GET /explore":                 s.explore,
-		"GET /explore/more":            s.exploreMore,
-		"GET /library":                 s.library,
-		"GET /archive":                 s.archive,
-		"GET /archive/{id}":            s.archiveEdition,
-		"GET /search":                  s.search,
-		"GET /more":                    s.morePage,
-		"POST /items/{id}/rate/{vote}": s.rateItem,
-		"POST /items/{id}/opened":      s.openedItem,
-		"POST /items/{id}/{action}":    s.itemAction,
-		"GET /interests":               s.interestsPage,
-		"POST /interests":              s.addInterest,
-		"POST /interests/{id}/weight":  s.setInterestWeight,
-		"POST /interests/{id}/delete":  s.deleteInterest,
-		"POST /follows":                s.addFollow,
-		"POST /follows/{id}/delete":    s.deleteFollow,
-		"GET /feeds":                   s.feedsPage,
-		"POST /feeds":                  s.addFeed,
-		"POST /feeds/import":           s.importOPML,
-		"GET /feeds/export":            s.exportOPML,
-		"POST /feeds/{id}/toggle":      s.toggleFeed,
-		"POST /feeds/{id}/delete":      s.deleteFeed,
-		"GET /settings":                s.settingsPage,
-		"POST /settings":               s.saveSettings,
-		"POST /settings/theme":         s.saveTheme,
-		"POST /fetch":                  s.fetchNow,
-		"GET /status":                  s.status,
+		"GET /{$}":                      s.today,
+		"GET /welcome":                  s.welcomePage,
+		"POST /welcome":                 s.welcome,
+		"GET /explore":                  s.explore,
+		"GET /explore/more":             s.exploreMore,
+		"GET /library":                  s.library,
+		"GET /archive":                  s.archive,
+		"GET /archive/{id}":             s.archiveEdition,
+		"GET /search":                   s.search,
+		"GET /more":                     s.morePage,
+		"POST /items/{id}/rate/{vote}":  s.rateItem,
+		"POST /items/{id}/opened":       s.openedItem,
+		"POST /items/{id}/{action}":     s.itemAction,
+		"GET /read/{id}":                s.readPage,
+		"GET /read/{id}/text":           s.readText,
+		"POST /items/{id}/highlights":   s.addHighlight,
+		"POST /items/{id}/note":         s.noteItem,
+		"POST /highlights/{hid}/note":   s.noteHighlight,
+		"POST /highlights/{hid}/delete": s.deleteHighlight,
+		"GET /interests":                s.interestsPage,
+		"POST /interests":               s.addInterest,
+		"POST /interests/{id}/weight":   s.setInterestWeight,
+		"POST /interests/{id}/delete":   s.deleteInterest,
+		"POST /follows":                 s.addFollow,
+		"POST /follows/{id}/delete":     s.deleteFollow,
+		"GET /feeds":                    s.feedsPage,
+		"POST /feeds":                   s.addFeed,
+		"POST /feeds/import":            s.importOPML,
+		"GET /feeds/export":             s.exportOPML,
+		"POST /feeds/{id}/toggle":       s.toggleFeed,
+		"POST /feeds/{id}/delete":       s.deleteFeed,
+		"GET /settings":                 s.settingsPage,
+		"POST /settings":                s.saveSettings,
+		"POST /settings/theme":          s.saveTheme,
+		"POST /fetch":                   s.fetchNow,
+		"GET /status":                   s.status,
 	}
 	for pattern, h := range ui {
 		mux.HandleFunc(pattern, s.requireAuth(h))

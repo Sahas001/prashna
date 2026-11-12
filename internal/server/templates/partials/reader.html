@@ -1,0 +1,45 @@
+{{define "reader-actions"}}<div class="reader-actions" id="item-{{.Item.ID}}">{{template "actions" .}}</div>{{end}}
+
+{{define "reader-text"}}
+<div id="reader-text">
+{{- if .Body}}
+  <p class="reader-info">{{.Minutes}} min read<span class="sep" aria-hidden="true">·</span>kept on this computer</p>
+  <div class="prose" id="article" data-item="{{.Card.Item.ID}}">{{.Body}}</div>
+  <p class="reader-end" aria-hidden="true">❧</p>
+{{- else if .Pending}}
+  <div class="reader-wait" hx-get="/read/{{.Card.Item.ID}}/text" hx-trigger="load" hx-target="#reader-text" hx-swap="outerHTML">
+    <p>Getting the text<span class="ellipsis" aria-hidden="true"></span></p>
+  </div>
+{{- else}}
+  <div class="notice reader-problem">
+    <p>{{.Problem}}</p>
+    <div class="notice-actions">
+      <a class="btn btn-primary" href="{{.Card.Item.URL}}" target="_blank" rel="noopener noreferrer">Read on {{if .Host}}{{.Host}}{{else}}the original site{{end}}</a>
+      <button type="button" class="btn btn-quiet" hx-get="/read/{{.Card.Item.ID}}/text" hx-target="#reader-text" hx-swap="outerHTML">Try again</button>
+    </div>
+  </div>
+{{- end}}
+</div>
+{{end}}
+
+{{define "highlights"}}
+<section class="section highlights" id="highlights" aria-labelledby="h-highlights">
+  <h2 class="section-title" id="h-highlights"><span>Highlights{{if .List}} · {{len .List}}{{end}}</span></h2>
+  {{- if .List}}
+  <ol class="hl-list">
+    {{- range .List}}
+    <li class="hl" id="hl-{{.ID}}" data-start="{{.Start}}" data-end="{{.End}}">
+      <blockquote class="hl-quote" title="Show in the text">{{.Quote}}</blockquote>
+      <div class="hl-row">
+        <textarea name="note" rows="1" maxlength="20000" placeholder="Add a note" aria-label="Note on this highlight"
+          hx-post="/highlights/{{.ID}}/note" hx-trigger="change" hx-swap="none" data-saves>{{.Note}}</textarea>
+        <button type="button" class="act" hx-post="/highlights/{{.ID}}/delete" hx-target="#highlights" hx-swap="outerHTML">Remove</button>
+      </div>
+    </li>
+    {{- end}}
+  </ol>
+  {{- else}}
+  <p class="quiet hl-hint">Select any passage in the text to highlight it. Highlights and notes stay on this computer.</p>
+  {{- end}}
+</section>
+{{end}}
