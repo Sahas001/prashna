@@ -31,6 +31,12 @@ const hasWindow = true
 //go:embed build/appicon.png
 var appIcon []byte
 
+// The same icon as a drawing, for the Linux applications menu, which
+// wants either an exact pixel size per folder or a scalable image.
+//
+//go:embed build/appicon.svg
+var appIconSVG []byte
+
 // showWindow opens the app window on url (Prashna's own local address) and
 // returns when the window is closed or ctx is done. It must be called on
 // the main goroutine. id keeps one window per data folder: starting Prashna
@@ -119,7 +125,10 @@ func (a *app) launcher(args []string) error {
 		share = filepath.Join(home, ".local", "share")
 	}
 	entry := filepath.Join(share, "applications", "prashna.desktop")
-	icon := filepath.Join(share, "icons", "hicolor", "512x512", "apps", "prashna.png")
+	icon := filepath.Join(share, "icons", "hicolor", "scalable", "apps", "prashna.svg")
+	// Earlier versions put a PNG here; a newer drawing must not lose to it.
+	oldIcon := filepath.Join(share, "icons", "hicolor", "512x512", "apps", "prashna.png")
+	os.Remove(oldIcon)
 	if args[0] == "off" {
 		for _, f := range []string{entry, icon} {
 			if err := os.Remove(f); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -140,7 +149,7 @@ func (a *app) launcher(args []string) error {
 		"Comment=A daily edition of things worth reading, chosen for you\n" +
 		"Exec=" + shellJoin([]string{exe, "-data", a.dataDir}) + "\nIcon=prashna\nTerminal=false\n" +
 		"Categories=News;Education;Literature;\nStartupWMClass=prashna\n"
-	for f, data := range map[string][]byte{entry: []byte(content), icon: appIcon} {
+	for f, data := range map[string][]byte{entry: []byte(content), icon: appIconSVG} {
 		if err := os.MkdirAll(filepath.Dir(f), 0o755); err != nil {
 			return err
 		}
