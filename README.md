@@ -33,7 +33,7 @@ Prashna can also be built as a desktop app that opens in its own window instead 
 - Starting Prashna again brings the open window forward instead of opening a second one.
 - On Linux, `prashna launcher on` adds Prashna to your applications menu (`launcher off` removes it).
 
-The next release will be the first to include it, as `prashna-desktop_*` files on the releases page. Until then, see *Development* for how to build it.
+Download it from the same [releases page](https://github.com/Sahas001/prashna/releases): the `prashna-desktop_*` file for your system (Linux, macOS, Windows). The builds are unsigned, so macOS and Windows will ask before running it the first time. To build it yourself, see *Development*.
 
 ## Using it
 
