@@ -1,11 +1,11 @@
-# Builds Radar for every platform when a version tag (v1.2.3) is pushed.
+# Builds Prashna for every platform when a version tag (v1.2.3) is pushed.
 # Runs free on GitHub Actions; see .github/workflows/release.yml.
 version: 2
-project_name: radar
+project_name: prashna
 
 builds:
-  - main: ./cmd/radar
-    binary: radar
+  - main: ./cmd/prashna
+    binary: prashna
     env: [CGO_ENABLED=0] # pure-Go SQLite: one static binary, no system libraries
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
@@ -13,7 +13,7 @@ builds:
     ldflags: ["-s -w -X main.version={{ .Version }}"]
 
 archives:
-  - name_template: "radar_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - name_template: "prashna_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
     format_overrides:
       - goos: windows

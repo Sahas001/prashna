@@ -1,4 +1,4 @@
-// Package config holds Radar's settings. Everything has a working
+// Package config holds Prashna's settings. Everything has a working
 // default: a fresh install needs no config file at all. The settings
 // people change day to day (sources, edition size, learning) are edited in
 // the app and stored in the database (see Settings); config.yaml in the
@@ -17,20 +17,20 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 type Config struct {
-	DBPath     string        `yaml:"db_path"` // default: <data folder>/radar.db
+	DBPath     string        `yaml:"db_path"` // default: <data folder>/prashna.db
 	UserAgent  string        `yaml:"user_agent"`
 	Addr       string        `yaml:"addr"`        // where the app listens
-	FetchEvery time.Duration `yaml:"fetch_every"` // how often sources are checked while Radar runs
+	FetchEvery time.Duration `yaml:"fetch_every"` // how often sources are checked while Prashna runs
 	Sources    Sources       `yaml:"sources"`
 	Scoring    Scoring       `yaml:"scoring"`
 	Edition    Edition       `yaml:"edition"`
 	Learning   Learning      `yaml:"learning"`
 	// PasswordEnv names an env var holding a password for the web UI. It is
-	// only needed when Radar listens beyond this computer (Addr not on
+	// only needed when Prashna listens beyond this computer (Addr not on
 	// localhost); then the UI stays locked until it is set.
 	PasswordEnv string `yaml:"password_env"`
 	// Interests, feeds and book follows given here are imported once into
@@ -184,16 +184,16 @@ func (in *Interest) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// DefaultAddr is where Radar listens: this computer only.
+// DefaultAddr is where Prashna listens: this computer only.
 const DefaultAddr = "127.0.0.1:7878"
 
 // Default returns the configuration a fresh install runs with.
 func Default() Config {
 	return Config{
-		UserAgent:   "Radar/1.0 (personal reading app; +https://github.com/Sahas001/radar)",
+		UserAgent:   "Prashna/1.0 (personal reading app; +https://github.com/Sahas001/prashna)",
 		Addr:        DefaultAddr,
 		FetchEvery:  4 * time.Hour,
-		PasswordEnv: "RADAR_PASSWORD",
+		PasswordEnv: "PRASHNA_PASSWORD",
 		Sources: Sources{
 			ArXiv: ArXiv{Enabled: false, MaxResults: 200},
 			// Off until the reader picks a technical topic (or turns it on):
@@ -233,20 +233,23 @@ func Default() Config {
 	}
 }
 
-// DataDir is where Radar keeps its database and optional config.yaml:
-// $RADAR_HOME if set, else the OS's per-user config folder
-// (~/.config/radar, ~/Library/Application Support/Radar, %AppData%\Radar).
+// DefaultDBName is the database file inside the data folder.
+const DefaultDBName = "prashna.db"
+
+// DataDir is where Prashna keeps its database and optional config.yaml:
+// $PRASHNA_HOME if set, else the OS's per-user config folder
+// (~/.config/prashna, ~/Library/Application Support/Prashna, %AppData%\Prashna).
 func DataDir() (string, error) {
-	if d := os.Getenv("RADAR_HOME"); d != "" {
+	if d := os.Getenv("PRASHNA_HOME"); d != "" {
 		return d, nil
 	}
 	base, err := os.UserConfigDir()
 	if err != nil {
-		return "", fmt.Errorf("no per-user config folder (set RADAR_HOME): %w", err)
+		return "", fmt.Errorf("no per-user config folder (set PRASHNA_HOME): %w", err)
 	}
-	name := "radar"
+	name := "prashna"
 	if os.PathSeparator == '\\' || strings.Contains(base, "Library/Application Support") {
-		name = "Radar"
+		name = "Prashna"
 	}
 	return filepath.Join(base, name), nil
 }
@@ -270,7 +273,7 @@ func Load(path, dataDir string) (cfg Config, missing bool, err error) {
 		}
 	}
 	if cfg.DBPath == "" {
-		cfg.DBPath = "radar.db"
+		cfg.DBPath = DefaultDBName
 	}
 	if !filepath.IsAbs(cfg.DBPath) {
 		cfg.DBPath = filepath.Join(dataDir, cfg.DBPath)

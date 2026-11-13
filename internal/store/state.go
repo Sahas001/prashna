@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 // Setting returns a value from the settings table ("" if unset).
@@ -62,7 +62,7 @@ func (s *Store) SetTimeSetting(ctx context.Context, key string, t time.Time) err
 	return s.SetSetting(ctx, key, strconv.FormatInt(t.Unix(), 10))
 }
 
-// FeedState is what Radar remembers about one RSS/Atom feed.
+// FeedState is what Prashna remembers about one RSS/Atom feed.
 type FeedState struct {
 	URL           string
 	Title         string

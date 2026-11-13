@@ -26,7 +26,7 @@
     {{- end}}
   </ul>
   {{- else}}
-  <p class="quiet">Nothing here yet. A handful of topics is enough to start; Radar learns the rest from what you mark.</p>
+  <p class="quiet">Nothing here yet. A handful of topics is enough to start; Prashna learns the rest from what you mark.</p>
   {{- end}}
 </section>
 {{end}}
@@ -58,8 +58,8 @@
 {{define "model"}}
 <section id="model" class="panel">
   <header class="panel-head">
-    <h2>What Radar has learned</h2>
-    <p class="hint">Every “More like this” and “Less” teaches Radar your taste. It only starts re-ranking once it predicts your past ratings better than your interest list does.</p>
+    <h2>What Prashna has learned</h2>
+    <p class="hint">Every “More like this” and “Less” teaches Prashna your taste. It only starts re-ranking once it predicts your past ratings better than your interest list does.</p>
   </header>
   <p class="model-status{{if .Active}} is-on{{end}}">{{.Status}}</p>
   {{- if .Progress}}
@@ -89,7 +89,7 @@
 <section class="panel">
   <header class="panel-head">
     <h2>Follow a blog or magazine</h2>
-    <p class="hint">Paste its address. Radar finds the feed for you.</p>
+    <p class="hint">Paste its address. Prashna finds the feed for you.</p>
   </header>
   <form class="feed-form" hx-post="/feeds" hx-target="#feeds" hx-swap="outerHTML" hx-disabled-elt="find button">
     <div class="field field-wide">
@@ -163,7 +163,7 @@
   {{- if .Running}}<span class="pulse" aria-hidden="true"></span>Checking your sources…
   {{- else if .Error}}Last check {{ago .Last}} had a problem: {{.Error}}
   {{- else if not .Last.IsZero}}Last checked {{ago .Last}}.
-  {{- else}}Not checked since Radar started.{{end}}
+  {{- else}}Not checked since Prashna started.{{end}}
 </p>
 {{end}}
 

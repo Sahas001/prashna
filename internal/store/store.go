@@ -17,7 +17,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 //go:embed migrations/*.sql
@@ -222,6 +222,20 @@ func (s *Store) SaveItems(ctx context.Context, items []item.Item) (SaveStats, er
 		}
 	}
 	return st, tx.Commit()
+}
+
+// Stored returns the row a Normalized item was saved as: its own, or the
+// one SaveItems merged it into because the title matched.
+func (s *Store) Stored(ctx context.Context, it item.Item) (item.Item, error) {
+	key := item.DedupeKey(it)
+	got, err := scanItem(s.db.QueryRowContext(ctx,
+		`SELECT `+itemCols+` FROM items
+		 WHERE id = ? OR (? != '' AND title_key = ?)
+		 ORDER BY id = ? DESC LIMIT 1`, it.ID, key, key, it.ID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return got, ErrNotFound
+	}
+	return got, err
 }
 
 // ItemsWithFeedback returns all items with the given rating, regardless of age.

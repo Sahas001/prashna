@@ -21,7 +21,11 @@ func openBrowser(url string) error {
 	default:
 		cmd = exec.Command("xdg-open", url)
 	}
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait() // don't leave a zombie per link opened
+	return nil
 }
 
 // appURL is the address to open in a browser.
@@ -33,8 +37,8 @@ func (a *app) appURL() string {
 	return "http://" + addr + "/"
 }
 
-// runningURL reports whether a Radar is already serving on the configured
-// address (e.g. started at login), so `radar` can just open it.
+// runningURL reports whether a Prashna is already serving on the configured
+// address (e.g. started at login), so `prashna` can just open it.
 func (a *app) runningURL(ctx context.Context) (string, bool) {
 	ctx, cancel := context.WithTimeout(ctx, 700*time.Millisecond)
 	defer cancel()
@@ -46,5 +50,5 @@ func (a *app) runningURL(ctx context.Context) (string, bool) {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64))
-	return url, resp.StatusCode == http.StatusOK && strings.HasPrefix(string(body), "radar ok")
+	return url, resp.StatusCode == http.StatusOK && strings.HasPrefix(string(body), "prashna ok")
 }

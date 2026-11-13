@@ -1,4 +1,4 @@
-// Package edition makes Radar's daily edition: once a day it picks a lead
+// Package edition makes Prashna's daily edition: once a day it picks a lead
 // story and a few of the best unread papers, articles and discussions
 // (plus a weekly books block), and keeps that selection fixed for the day
 // so it can be read, left, and come back to.
@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // Section keys, in the order sections appear.

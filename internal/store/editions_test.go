@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 func seedItems(t *testing.T, s *Store, n int) []item.Item {

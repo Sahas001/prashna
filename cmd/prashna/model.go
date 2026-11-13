@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sahas001/radar/internal/learn"
+	"github.com/Sahas001/prashna/internal/learn"
 )
 
 // model retrains (via a rescore) and prints what the model learned.

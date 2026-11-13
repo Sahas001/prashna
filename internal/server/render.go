@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sahas001/radar/internal/edition"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/edition"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 //go:embed templates/layout.html templates/pages templates/partials
@@ -66,6 +66,7 @@ type layoutData struct {
 	Bare   bool
 	CanOut bool   // show "Sign out"
 	Theme  string // "light" or "dark" when chosen in Settings; "" follows the system
+	Window bool   // shown in the desktop app's own window, not a browser
 	Data   any
 }
 
@@ -77,7 +78,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		http.Error(w, "unknown page "+name, http.StatusInternalServerError)
 		return
 	}
-	ld := layoutData{Title: title, Nav: nav, Data: data, Bare: bare[name], Theme: s.theme(r.Context())}
+	ld := layoutData{Title: title, Nav: nav, Data: data, Bare: bare[name], Theme: s.theme(r.Context()), Window: inWindow(r)}
 	if !ld.Bare {
 		ld.CanOut = !s.Auth.Disabled
 		if counts, err := s.Store.ShelfCounts(r.Context()); err == nil {
@@ -138,6 +139,8 @@ const (
 	variantLead  = "lead"
 	variantBook  = "book"
 	variantPick  = "pick"
+	// variantReader is the actions bar on the reader page.
+	variantReader = "reader"
 )
 
 // card is an item as displayed: the shared entry (byline, snippet,
@@ -150,6 +153,7 @@ type card struct {
 	Liked    bool
 	Disliked bool
 	Reading  string // "Opened 3 times, last 2d ago"
+	ReadHref string // the piece in Prashna's reader; "" if it only opens on its own site
 }
 
 func newCard(it item.Item, explain func(item.Item) []string, variant string) card {
@@ -163,6 +167,9 @@ func newCard(it item.Item, explain func(item.Item) []string, variant string) car
 		Read:     !it.ReadAt.IsZero(),
 		Liked:    it.Feedback == item.Liked,
 		Disliked: it.Feedback == item.Disliked,
+	}
+	if readable(it) {
+		c.ReadHref = "/read/" + it.ID
 	}
 	switch {
 	case it.OpenCount > 1:

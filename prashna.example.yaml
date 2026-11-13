@@ -1,27 +1,27 @@
-# Optional settings for Radar.
+# Optional settings for Prashna.
 #
-# Radar works without any config file. Most settings (sources, edition
+# Prashna works without any config file. Most settings (sources, edition
 # size, learning) are changed on the Settings page, and interests, feeds
 # and authors on their own pages. This file is for the rest.
 #
-# To use it, copy it to config.yaml in Radar's data folder:
-#   Linux:   ~/.config/radar/config.yaml
-#   macOS:   ~/Library/Application Support/Radar/config.yaml
-#   Windows: %AppData%\Radar\config.yaml
-# (or wherever -data / $RADAR_HOME points). Every key is optional.
+# To use it, copy it to config.yaml in Prashna's data folder:
+#   Linux:   ~/.config/prashna/config.yaml
+#   macOS:   ~/Library/Application Support/Prashna/config.yaml
+#   Windows: %AppData%\Prashna\config.yaml
+# (or wherever -data / $PRASHNA_HOME points). Every key is optional.
 
 # Where the app listens. The default only accepts connections from this
 # computer. To read on your phone over your home network or Tailscale, use
-# 0.0.0.0:7878; Radar then asks for a password, read from this variable:
+# 0.0.0.0:7878; Prashna then asks for a password, read from this variable:
 # addr: 127.0.0.1:7878
-# password_env: RADAR_PASSWORD
+# password_env: PRASHNA_PASSWORD
 
-# How often sources are checked while Radar runs (the Settings page
+# How often sources are checked while Prashna runs (the Settings page
 # changes this too).
 # fetch_every: 4h
 
-# Identify Radar politely to the sites it reads.
-# user_agent: "Radar/1.0 (personal reading app)"
+# Identify Prashna politely to the sites it reads.
+# user_agent: "Prashna/1.0 (personal reading app)"
 
 sources:
   hackernews:
@@ -64,7 +64,7 @@ learning:
   max_weight: 0.8
 
 # Interests, feeds and authors listed here are imported once, the first time
-# Radar runs with a new data folder. After that, edit them in the app.
+# Prashna runs with a new data folder. After that, edit them in the app.
 # interests:
 #   - distributed systems
 #   - term: cryptocurrency

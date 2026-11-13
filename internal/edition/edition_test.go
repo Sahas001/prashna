@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 func openStore(t *testing.T) *store.Store {
 	t.Helper()
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "radar.db"))
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "prashna.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

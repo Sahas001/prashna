@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 func TestInterests(t *testing.T) {

@@ -1,0 +1,19 @@
+{{define "content"}}
+<article class="reader">
+  <header class="reader-head">
+    {{template "meta" .Card}}
+    <h1 class="reader-title">{{.Card.Item.Title}}</h1>
+    <p class="byline">{{if .Card.Byline}}{{.Card.Byline}} · {{end}}<a href="{{.Card.Item.URL}}" target="_blank" rel="noopener noreferrer">Read on {{if .Host}}{{.Host}}{{else}}the original site{{end}}</a>
+      {{- if .PDF}} · <a href="{{.PDF}}" target="_blank" rel="noopener noreferrer">PDF</a>{{end}}
+      {{- if .Card.Discussion}} · <a href="{{.Card.Discussion}}" target="_blank" rel="noopener noreferrer">discussion</a>{{end}}</p>
+    {{template "reader-actions" .Card}}
+  </header>
+  {{template "reader-text" .}}
+  {{template "highlights" .Highlights}}
+  <section class="section reader-note" aria-labelledby="h-note">
+    <h2 class="section-title" id="h-note"><span>Your note</span></h2>
+    <textarea name="note" rows="3" maxlength="20000" aria-labelledby="h-note" placeholder="What do you want to remember from this?"
+      hx-post="/items/{{.Card.Item.ID}}/note" hx-trigger="change" hx-swap="none" data-saves>{{.Note}}</textarea>
+  </section>
+</article>
+{{end}}

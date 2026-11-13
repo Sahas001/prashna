@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/item"
+	"github.com/Sahas001/prashna/internal/item"
 )
 
 func openTest(t *testing.T) (*Store, string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "radar.db")
+	path := filepath.Join(t.TempDir(), "prashna.db")
 	s, err := Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)

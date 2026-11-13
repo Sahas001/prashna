@@ -1,5 +1,5 @@
 /*
-  Radar. Set like a small, well-made periodical: Literata for reading,
+  Prashna. Set like a small, well-made periodical: Literata for reading,
   the system sans for the furniture around it, warm paper and ink, and a
   single brick-red accent used sparingly.
 */
@@ -16,6 +16,23 @@
   src: url("fonts/literata-opsz-italic.woff2") format("woff2");
   font-weight: 200 900;
   font-style: italic;
+  font-display: swap;
+}
+
+/* STIX Two Math, for formulas in papers: a serif that sits well beside
+   Literata. Only fetched by pages that contain maths. */
+@font-face {
+  font-family: "Prashna Math";
+  src: local("STIX Two Math"), url("fonts/stix-two-math.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Prashna Wordmark";
+  src: url("fonts/noto-serif-devanagari-wordmark.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
   font-display: swap;
 }
 
@@ -123,8 +140,13 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
   height: 60px; display: flex; align-items: center; gap: 36px;
 }
 .wordmark {
-  font-family: var(--serif); font-style: italic; font-weight: 640;
-  font-size: 25px; letter-spacing: -.01em; text-decoration: none; color: var(--ink);
+  /* The name in its own script: प्रश्न. Only these letters are bundled. */
+  font-family: "Prashna Wordmark", "Noto Serif Devanagari", "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", "Nirmala UI", var(--serif);
+  font-style: normal; font-weight: 600;
+  font-size: 27px; line-height: 1.4; color: var(--ink); text-decoration: none;
+  /* Devanagari hangs from its top line, so its letters sit higher in the
+     line than Latin ones. Lower it to centre with the links beside it. */
+  position: relative; top: .16em;
 }
 .wordmark:hover { color: var(--ink); }
 .wordmark-large { font-size: 34px; display: block; margin-bottom: 28px; }
@@ -454,7 +476,6 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 .feed-url { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feed-tags { margin-top: 3px; font-size: 12.5px; color: var(--ink-2); font-style: italic; }
 .status { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
-.status-err { color: var(--accent); overflow-wrap: anywhere; }
 .feed-actions { display: flex; gap: 6px; flex: none; }
 @media (max-width: 520px) { .feed { flex-direction: column; gap: 10px; } }
 .import-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -529,6 +550,141 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 
 /* ---- Toast ---- */
 
+/* ---- Reader ---- */
+
+.reader { margin: 0 auto; } /* as wide as the page column, like the feed */
+.reader-head { padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.reader-title {
+  margin-top: 10px; font-family: var(--serif); font-weight: 620;
+  font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.12; letter-spacing: -.02em; overflow-wrap: break-word;
+}
+.reader-head .byline { margin-top: 12px; font-size: 14px; }
+.reader-info { margin-top: 22px; font-size: 12.5px; color: var(--muted); }
+.reader-wait { padding: 48px 0; }
+.reader-problem { padding: 8px 0 32px; }
+.reader-problem .notice { padding-top: 28px; }
+.reader-wait p { font-family: var(--serif); font-style: italic; font-size: 1.1rem; color: var(--ink-2); }
+/* Nothing to highlight when the text couldn't be had. */
+.reader:has(.reader-problem) .highlights:not(:has(.hl)) { display: none; }
+.reader-end { margin-top: 44px; text-align: center; font-size: 1.4rem; color: var(--rule-strong); }
+
+.prose {
+  margin-top: 18px; font-family: var(--serif); font-size: 1.19rem; line-height: 1.72; color: var(--ink);
+  overflow-wrap: break-word; hyphens: auto;
+}
+.prose > * + *, .prose div > * + * { margin-top: 1.15em; }
+.prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  margin-top: 1.9em; font-weight: 640; line-height: 1.25; letter-spacing: -.012em; hyphens: manual;
+}
+.prose h2 { font-size: 1.5rem; }
+.prose h3 { font-size: 1.26rem; }
+.prose h4, .prose h5, .prose h6 { font-size: 1.08rem; }
+.prose a { color: inherit; text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
+.prose a:hover { color: var(--accent); text-decoration-color: currentColor; }
+.prose ul, .prose ol { padding-left: 1.5em; }
+.prose li + li { margin-top: .45em; }
+.prose li > ul, .prose li > ol { margin-top: .45em; }
+.prose blockquote { margin-left: 0; padding-left: 1.1em; border-left: 3px solid var(--rule-strong); color: var(--ink-2); font-style: italic; }
+.prose blockquote > * + * { margin-top: .8em; }
+.prose img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 3px; }
+.prose figure { margin: 1.8em 0; }
+.prose figcaption { margin-top: 8px; font-family: var(--sans); font-size: 13px; line-height: 1.45; color: var(--muted); text-align: center; }
+.prose pre {
+  padding: 14px 16px; overflow-x: auto; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 6px;
+  font-family: var(--mono); font-size: .8em; line-height: 1.55; hyphens: manual; white-space: pre; overflow-wrap: normal;
+}
+.prose code, .prose kbd, .prose samp { font-family: var(--mono); font-size: .86em; hyphens: manual; }
+.prose :not(pre) > code { padding: 1px 5px; background: var(--paper-2); border-radius: 4px; }
+.prose pre code { font-size: 1em; }
+.prose hr { border: 0; height: 1px; background: var(--rule); margin: 2.2em 20%; }
+.prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-family: var(--sans); font-size: .82em; line-height: 1.45; hyphens: manual; }
+.prose th, .prose td { padding: 7px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+.prose th { font-weight: 650; border-bottom-color: var(--rule-strong); }
+.prose sup, .prose sub { line-height: 0; font-size: .72em; }
+
+/* Papers: maths, numbered equations, abstract, notes and references. */
+.prose math { font-family: "Prashna Math", "STIX Two Math", "Cambria Math", "Latin Modern Math", math; font-size: 1.04em; hyphens: manual; }
+.prose .p-eq {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 12px;
+  margin: 1.5em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; hyphens: manual;
+}
+.prose .p-eq > * { grid-column: 2; margin: 0; }
+.prose .p-eq > .p-eqno { grid-column: 3; justify-self: end; font-family: var(--sans); font-size: 13.5px; color: var(--muted); }
+.prose .p-eq + .p-eq { margin-top: -.7em; }
+.prose .p-abstract { padding: 4px 0 4px 1.1em; border-left: 3px solid var(--rule-strong); color: var(--ink-2); font-size: .95em; line-height: 1.66; }
+.prose .p-abstract h6 { margin: 0 0 .5em; font-family: var(--sans); font-size: 11.5px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.prose .p-notes, .prose .p-refs { font-family: var(--sans); font-size: .76em; line-height: 1.55; color: var(--ink-2); hyphens: manual; }
+.prose .p-notes { margin-top: 3em; }
+.prose .p-notes h2 { font-family: var(--serif); font-size: 1.5rem; color: var(--ink); }
+.prose .p-notes ol { margin-top: 1em; }
+.prose .p-refs { list-style: none; padding-left: 0; }
+.prose .p-refs li { padding-left: 2.6em; text-indent: -2.6em; }
+.prose .p-refs li + li { margin-top: .7em; }
+.prose figure > table, .prose figure > img, .prose figure > div { margin-left: auto; margin-right: auto; }
+.prose figure > table { width: fit-content; }
+
+.prose ::selection { background: var(--hl-strong); }
+
+:root { --hl: #f6e3a1; --hl-strong: #efcf6a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hl: #5a4a1c; --hl-strong: #7a6424; } }
+:root[data-theme="dark"] { --hl: #5a4a1c; --hl-strong: #7a6424; }
+
+mark.hl-mark { background: var(--hl); color: inherit; border-radius: 2px; padding: .08em 0; cursor: pointer; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+mark.hl-mark.flash, .hl.flash .hl-quote { background: var(--hl-strong); }
+.hl-button {
+  position: absolute; z-index: 30; min-height: 36px; padding: 6px 14px; border: 0; border-radius: 999px;
+  background: var(--ink); color: var(--paper); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(30, 20, 10, .28);
+}
+.hl-button[hidden] { display: none; }
+
+.hl-list { list-style: none; padding: 0; }
+.hl { padding: 18px 0 12px; }
+.hl + .hl { border-top: 1px solid var(--rule); }
+.hl-quote {
+  margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--hl-strong);
+  font-family: var(--serif); font-size: 1.04rem; line-height: 1.58; color: var(--ink); overflow-wrap: break-word;
+  transition: background .3s;
+}
+.highlights .hl-quote { cursor: pointer; }
+.hl-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.hl-row textarea { flex: 1; min-height: 38px; field-sizing: content; font-size: 14.5px; }
+.hl-hint { padding: 16px 0 0; font-family: var(--serif); font-size: 1rem; }
+.reader-note textarea { width: 100%; margin-top: 14px; field-sizing: content; min-height: 5.5em; font-family: var(--serif); font-size: 1.02rem; line-height: 1.55; }
+
+/* Desktop app window */
+.win-back {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin: 0 -28px 0 -8px; flex: none;
+  border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer;
+}
+.win-back:hover { color: var(--ink); background: var(--paper-2); }
+.win-back svg.i { width: 20px; height: 20px; }
+@media (max-width: 780px) {
+  [data-window] .masthead-inner { position: relative; }
+  .win-back { position: absolute; left: 10px; margin: 0; }
+}
+
+/* Add a link */
+.page-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.page-head-row .btn { flex: none; margin-bottom: 2px; }
+.add-how a { overflow-wrap: anywhere; }
+.add-form { display: flex; gap: 10px; flex-wrap: wrap; max-width: 44rem; }
+.add-form input { flex: 1; min-width: 14rem; }
+.add-form .btn.htmx-request, .add-form.htmx-request .btn { opacity: .5; pointer-events: none; }
+.add-error { margin-top: 14px; color: var(--accent); font-size: 14.5px; }
+.add-how { margin-top: 44px; max-width: 40rem; }
+.add-how p { margin-top: 12px; font-family: var(--serif); font-size: 1.04rem; line-height: 1.55; color: var(--ink-2); }
+.bookmarklet { display: inline-block; margin-top: 16px; cursor: grab; }
+
+/* Library > Highlights */
+.noted { padding: 24px 0 22px; }
+.noted + .noted { border-top: 1px solid var(--rule); }
+.noted .hl-quote { margin-top: 14px; max-width: var(--prose); }
+.noted-note, .hl-note-text { max-width: var(--prose); white-space: pre-line; overflow-wrap: break-word; }
+.noted-note { margin-top: 10px; font-family: var(--serif); font-size: 1.02rem; line-height: 1.55; color: var(--ink-2); }
+.hl-note-text { margin: 6px 0 0 17px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+
+
 #toast {
   position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 16px); z-index: 40;
   max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 6px;
@@ -543,6 +699,6 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 }
 
 @media print {
-  .masthead, .tabbar, .actions, .more, .notice-actions { display: none !important; }
+  .masthead, .tabbar, .actions, .more, .notice-actions, .hl-button, .hl-row .act { display: none !important; }
   body { background: #fff; color: #000; }
 }

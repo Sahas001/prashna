@@ -17,12 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sahas001/radar/internal/config"
-	"github.com/Sahas001/radar/internal/edition"
-	"github.com/Sahas001/radar/internal/item"
-	"github.com/Sahas001/radar/internal/learn"
-	"github.com/Sahas001/radar/internal/score"
-	"github.com/Sahas001/radar/internal/store"
+	"github.com/Sahas001/prashna/internal/config"
+	"github.com/Sahas001/prashna/internal/edition"
+	"github.com/Sahas001/prashna/internal/item"
+	"github.com/Sahas001/prashna/internal/learn"
+	"github.com/Sahas001/prashna/internal/score"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 func init() { loginFailWait = time.Millisecond }
@@ -39,7 +39,7 @@ type env struct {
 func newEnv(t *testing.T, auth Auth) *env {
 	t.Helper()
 	ctx := context.Background()
-	st, err := store.Open(ctx, filepath.Join(t.TempDir(), "radar.db"))
+	st, err := store.Open(ctx, filepath.Join(t.TempDir(), "prashna.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func newEnv(t *testing.T, auth Auth) *env {
 		SaveSettings: func(_ context.Context, s config.Settings) error { e.settings = s; return nil },
 		Auth:         auth,
 		SessionKey:   []byte("session-key"),
-		About:        About{Version: "test", DataDir: "/data/radar", Addr: "127.0.0.1:7878"},
+		About:        About{Version: "test", DataDir: "/data/prashna", Addr: "127.0.0.1:7878"},
 	}
 	st.SetSetting(ctx, onboardedKey, "yes")
 	e.srv = httptest.NewServer(e.s.Handler())
@@ -149,8 +149,8 @@ func itoa(n int64) string { return strconv.FormatInt(n, 10) }
 func TestHealthz(t *testing.T) {
 	e := newEnv(t, Auth{Disabled: true})
 	_, body := do(t, client(), "GET", e.srv.URL+"/healthz", nil, nil)
-	if body != "radar ok\n" {
-		t.Errorf("healthz = %q (the CLI looks for this to detect a running Radar)", body)
+	if body != "prashna ok\n" {
+		t.Errorf("healthz = %q (the CLI looks for this to detect a running Prashna)", body)
 	}
 }
 
@@ -162,7 +162,9 @@ func TestTodayMakesAndShowsEdition(t *testing.T) {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
 	for _, want := range []string{"Edition 1", "Item &lt;paper&gt;", `class="lead`, "Essays &amp; articles", "Book of the week",
-		"That’s today’s edition", `data-open="` + e.items[1].ID + `"`, `href="https://blog.example.com/post"`, "matches consensus"} {
+		"That’s today’s edition", `data-open="` + e.items[3].ID + `"`, `href="https://openlibrary.org/works/OL1W"`,
+		`<a href="/read/` + e.items[0].ID + `">`,
+		`<a href="/read/` + e.items[1].ID + `">`, "matches consensus"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("today missing %q", want)
 		}
@@ -197,7 +199,7 @@ func TestTodayWhenNothingToShow(t *testing.T) {
 
 func TestWelcomeFlow(t *testing.T) {
 	ctx := context.Background()
-	st, _ := store.Open(ctx, filepath.Join(t.TempDir(), "radar.db"))
+	st, _ := store.Open(ctx, filepath.Join(t.TempDir(), "prashna.db"))
 	defer st.Close()
 	var fetched atomic.Int32
 	settings := config.Default().Settings()
@@ -260,7 +262,7 @@ func TestWelcomeFlow(t *testing.T) {
 
 func TestWelcomeNonTechKeepsHNOff(t *testing.T) {
 	ctx := context.Background()
-	st, _ := store.Open(ctx, filepath.Join(t.TempDir(), "radar.db"))
+	st, _ := store.Open(ctx, filepath.Join(t.TempDir(), "prashna.db"))
 	defer st.Close()
 	settings := config.Default().Settings()
 	s := &Server{Store: st, Auth: Auth{Disabled: true},
@@ -340,7 +342,7 @@ func TestPages(t *testing.T) {
 		{"/search?q=zzzz", []string{"Nothing matches"}, nil},
 		{"/interests", []string{"consensus", "Authors you follow", "Book subjects", "Rate 15 more", `<progress`}, nil},
 		{"/feeds", []string{"You don’t follow any feeds yet", "OPML"}, nil},
-		{"/settings", []string{"Each day’s edition", "On Sundays", "/data/radar", "Hacker News"}, nil},
+		{"/settings", []string{"Each day’s edition", "On Sundays", "/data/prashna", "Hacker News"}, nil},
 		{"/more", []string{"Archive", "Settings"}, nil},
 	}
 	for _, tc := range cases {
@@ -483,7 +485,7 @@ func TestFeedsAndOPML(t *testing.T) {
 	}
 
 	resp, body = do(t, c, "GET", e.srv.URL+"/feeds/export", nil, nil)
-	if !strings.Contains(resp.Header.Get("Content-Disposition"), "radar-feeds.opml") || strings.Count(body, "xmlUrl=") != 3 {
+	if !strings.Contains(resp.Header.Get("Content-Disposition"), "prashna-feeds.opml") || strings.Count(body, "xmlUrl=") != 3 {
 		t.Errorf("export: %s %.300s", resp.Header.Get("Content-Disposition"), body)
 	}
 	parsed, err := parseOPML(strings.NewReader(body))
@@ -566,7 +568,7 @@ func TestAuth(t *testing.T) {
 		}
 	}
 	locked := newEnv(t, Auth{})
-	if resp, body := do(t, client(), "GET", locked.srv.URL+"/", nil, nil); resp.StatusCode != 503 || !strings.Contains(body, "RADAR_PASSWORD") {
+	if resp, body := do(t, client(), "GET", locked.srv.URL+"/", nil, nil); resp.StatusCode != 503 || !strings.Contains(body, "PRASHNA_PASSWORD") {
 		t.Errorf("no password: %d", resp.StatusCode)
 	}
 }

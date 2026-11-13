@@ -26,7 +26,7 @@ type Auth struct {
 }
 
 const (
-	sessionCookie = "radar_session"
+	sessionCookie = "prashna_session"
 	sessionTTL    = 30 * 24 * time.Hour
 )
 
@@ -38,7 +38,7 @@ var loginFailWait = time.Second
 func (s *Server) sessionMAC(exp string) []byte {
 	pw := sha256.Sum256([]byte(s.Auth.Password))
 	m := hmac.New(sha256.New, s.SessionKey)
-	m.Write([]byte("radar-session\x00" + exp + "\x00"))
+	m.Write([]byte("prashna-session\x00" + exp + "\x00"))
 	m.Write(pw[:])
 	return m.Sum(nil)
 }
@@ -81,7 +81,7 @@ func (s *Server) requireAuth(h http.HandlerFunc) http.HandlerFunc {
 		case s.Auth.Disabled:
 			h(w, r)
 		case s.Auth.Password == "":
-			s.renderPage(w, r, http.StatusServiceUnavailable, "setup", "Set up Radar", "", nil)
+			s.renderPage(w, r, http.StatusServiceUnavailable, "setup", "Set up Prashna", "", nil)
 		case s.validSession(r):
 			h(w, r)
 		default:

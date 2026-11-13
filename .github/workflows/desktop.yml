@@ -1,0 +1,62 @@
+# Builds the desktop app (Prashna in its own window) for each system when a
+# version tag is pushed, and attaches the files to that release. The
+# window uses the system's web view, so each one is built on its own OS.
+name: Desktop app
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            name: linux_amd64
+            tags: "-tags webkit2_41"
+          - os: macos-latest
+            name: darwin_universal
+            platform: "-platform darwin/universal"
+          - os: windows-latest
+            name: windows_amd64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
+      - name: Build
+        working-directory: cmd/prashna
+        run: wails build -s -skipbindings -trimpath ${{ matrix.tags }} ${{ matrix.platform }} -ldflags "-X main.version=${GITHUB_REF_NAME}"
+      - name: Package
+        working-directory: cmd/prashna/build/bin
+        run: |
+          name="prashna-desktop_${GITHUB_REF_NAME}_${{ matrix.name }}"
+          case "$RUNNER_OS" in
+            Linux)   tar czf "$name.tar.gz" prashna ;;
+            macOS)   ditto -c -k --keepParent Prashna.app "$name.zip" ;;
+            Windows) 7z a "$name.zip" prashna.exe ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prashna-desktop_${{ matrix.name }}
+          path: |
+            cmd/prashna/build/bin/*.tar.gz
+            cmd/prashna/build/bin/*.zip
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cmd/prashna/build/bin/*.tar.gz
+            cmd/prashna/build/bin/*.zip

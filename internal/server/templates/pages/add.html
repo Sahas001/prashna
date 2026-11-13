@@ -1,0 +1,23 @@
+{{define "content"}}
+<header class="page-head">
+  <a class="back" href="/library">Library</a>
+  <h1>Add a link</h1>
+  <p class="dek">Found something elsewhere? Save it to your reading list. Prashna keeps its text on this computer, to read here with highlights and notes.</p>
+</header>
+<form class="add-form" method="post" action="/add">
+  <input type="url" name="url" value="{{.URL}}" placeholder="https://…" aria-label="Web address" required{{if not .URL}} autofocus{{end}}>
+  <button type="submit" class="btn btn-primary">Save to library</button>
+</form>
+{{- if .Error}}<p class="add-error" role="alert">{{.Error}}</p>{{end}}
+<section class="add-how" aria-labelledby="h-bookmarklet">
+  <h2 class="section-title" id="h-bookmarklet"><span>Save from your browser</span></h2>
+  {{- if .Window}}
+  <p>Prashna can add a <em>Save to Prashna</em> button to your web browser, so one click saves whatever page you’re on. To set it up, open this address in your browser:</p>
+  <p><a href="{{.AddPage}}" data-outside hx-boost="false">{{.AddPage}}</a></p>
+  {{- else}}
+  <p>Drag this button to your bookmarks bar. Then, on any page worth keeping, click it: Prashna opens with the address filled in.</p>
+  <a class="btn bookmarklet" href="{{.Bookmarklet}}" hx-boost="false" title="Drag me to your bookmarks bar">Save to Prashna</a>
+  <p class="quiet">Can’t see a bookmarks bar? Press Ctrl+Shift+B (⌘⇧B on a Mac). The button works while Prashna is running, and sends the page’s address to Prashna and nowhere else.</p>
+  {{- end}}
+</section>
+{{end}}

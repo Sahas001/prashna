@@ -1,9 +1,11 @@
-/radar
-/radar.exe
+/prashna
+/prashna.exe
 /dist/
 *.db
 *.db-shm
 *.db-wal
-radar.yaml
+prashna.yaml
 config.yaml
 /.claude/
+/cmd/prashna/build/bin/
+/cmd/prashna/frontend/

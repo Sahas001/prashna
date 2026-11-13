@@ -1,4 +1,4 @@
-// Package item defines Radar's normalized content model. Every fetcher
+// Package item defines Prashna's normalized content model. Every fetcher
 // converts its source format into Items; everything downstream (dedupe,
 // scoring, storage, digests) only ever sees Items.
 package item
@@ -49,6 +49,10 @@ func (t Type) rank() int {
 	return 0
 }
 
+// SourceSaved is the Source of items the reader added by hand (a pasted
+// link, the bookmarklet) rather than a fetcher.
+const SourceSaved = "saved"
+
 // Feedback is the user's explicit rating of an Item.
 type Feedback int
 
@@ -89,8 +93,8 @@ type Item struct {
 	Feedback  Feedback
 	SavedAt   time.Time // on the reading list since; zero = not saved
 	ReadAt    time.Time // first read (opened or marked); zero = unread
-	OpenedAt  time.Time // last opened from Radar; zero = never
-	OpenCount int       // times opened from Radar
+	OpenedAt  time.Time // last opened from Prashna; zero = never
+	OpenCount int       // times opened from Prashna
 }
 
 // Normalize cleans text fields, canonicalizes the URL and derives the ID.
