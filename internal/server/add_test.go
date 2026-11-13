@@ -103,3 +103,36 @@ func TestAddLink(t *testing.T) {
 		}
 	}
 }
+
+func TestLateTitleAndWWW(t *testing.T) {
+	e := newEnv(t, Auth{Disabled: true})
+	ctx := context.Background()
+	online := false
+	var asked []string
+	e.s.ReadText = func(_ context.Context, u string) (reader.Article, error) {
+		asked = append(asked, u)
+		if !online || !strings.Contains(u, "://www.") {
+			return reader.Article{}, errors.New("connection refused")
+		}
+		return reader.Article{HTML: "<p>Now here.</p>", Title: "The Real Title of the Piece", Excerpt: "About it.", Words: 300}, nil
+	}
+	c := client()
+	// Added while the site is unreachable: kept, titled by its address.
+	do(t, c, "POST", e.srv.URL+"/add", url.Values{"url": {"https://www.late.example/essay"}}, nil)
+	id := item.IDFor("https://late.example/essay")
+	if it, err := e.st.Get(ctx, id); err != nil || it.Title != "late.example/essay" {
+		t.Fatalf("placeholder: %+v %v", it, err)
+	}
+	// Later the reader gets it (only at www.) and the piece gets its title.
+	online, asked = true, nil
+	_, body := do(t, c, "GET", e.srv.URL+"/read/"+id+"/text", nil, nil)
+	if !strings.Contains(body, "Now here.") {
+		t.Errorf("text not shown: %s", body)
+	}
+	if len(asked) != 2 || asked[1] != "https://www.late.example/essay" {
+		t.Errorf("asked %v", asked)
+	}
+	if it, _ := e.st.Get(ctx, id); it.Title != "The Real Title of the Piece" || it.Summary != "About it." {
+		t.Errorf("title not updated: %+v", it)
+	}
+}

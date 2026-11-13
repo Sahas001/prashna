@@ -202,3 +202,15 @@ func (s *Store) SetItemNote(ctx context.Context, itemID, body string) error {
 		itemID, body, time.Now().Unix())
 	return err
 }
+
+// SetTitle replaces an item's title and summary (an empty summary keeps
+// the old one).
+func (s *Store) SetTitle(ctx context.Context, itemID, title, summary string) error {
+	title, summary = item.CleanText(title), item.CleanText(summary)
+	if title == "" {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `UPDATE items SET title = ?, title_key = '',
+		summary = CASE WHEN ? != '' THEN ? ELSE summary END WHERE id = ?`, title, summary, summary, itemID)
+	return err
+}

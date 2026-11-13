@@ -29,6 +29,9 @@ func (a *app) autostart(args []string) error {
 		return err
 	}
 
+	if args[0] != "status" {
+		removeLegacyAutostart(f)
+	}
 	switch args[0] {
 	case "status":
 		if _, err := os.Stat(f); err == nil {
@@ -138,4 +141,25 @@ func shellJoin(args []string) string {
 
 func xmlEscape(s string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(s)
+}
+
+// removeLegacyAutostart removes the login item of the app's old name
+// (Radar), which would otherwise start the old program on an empty data
+// folder next to this one. f is this app's own login item; the old one
+// sits beside it.
+func removeLegacyAutostart(f string) {
+	dir := filepath.Dir(f)
+	for _, name := range []string{"radar.service", "radar.desktop", "app.radar.plist", "Radar.vbs"} {
+		old := filepath.Join(dir, name)
+		if _, err := os.Stat(old); err != nil {
+			continue
+		}
+		switch name {
+		case "radar.service":
+			exec.Command("systemctl", "--user", "disable", "--now", name).Run()
+		case "app.radar.plist":
+			exec.Command("launchctl", "unload", old).Run()
+		}
+		os.Remove(old)
+	}
 }

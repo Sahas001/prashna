@@ -116,11 +116,6 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 			adopted = append(adopted, "moved your Radar data folder to "+dataDir)
 		}
 	}
-	if renamed, err := adoptLegacyFiles(dataDir); err != nil {
-		return fmt.Errorf("rename your Radar database in %s: %w", dataDir, err)
-	} else if renamed {
-		adopted = append(adopted, "renamed radar.db to "+config.DefaultDBName)
-	}
 	cfgPath := *cfgFlag
 	if cfgPath == "" {
 		cfgPath = filepath.Join(dataDir, "config.yaml")
@@ -128,6 +123,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	cfg, _, err := config.Load(cfgPath, dataDir)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
+	}
+	if cfg.DBPath == filepath.Join(dataDir, config.DefaultDBName) {
+		if renamed, err := adoptLegacyFiles(dataDir); err != nil {
+			return fmt.Errorf("rename your Radar database in %s: %w", dataDir, err)
+		} else if renamed {
+			adopted = append(adopted, "renamed radar.db to "+config.DefaultDBName)
+		}
 	}
 
 	level := slog.LevelInfo

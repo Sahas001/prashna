@@ -30,7 +30,7 @@ const (
 // NewEntry builds the display form of an item: byline, snippet, cover and
 // the reasons it was recommended. Shared by every page that lists items.
 func NewEntry(it item.Item, explain func(item.Item) []string) Entry {
-	e := Entry{Item: it, Snippet: item.Truncate(it.Summary, snippetRunes), Cover: it.Meta["cover_url"]}
+	e := Entry{Item: it, Snippet: snippet(it.Summary), Cover: it.Meta["cover_url"]}
 	if hn := it.Meta["hn_url"]; hn != "" && hn != it.URL {
 		e.Discussion = hn
 	}
@@ -92,4 +92,15 @@ func NewEntry(it item.Item, explain func(item.Item) []string) Entry {
 	}
 	e.Why = strings.Join(why, " · ")
 	return e
+}
+
+// snippet is the summary as shown under a title. Some feeds put only
+// link furniture where a description should be (Lobsters' "Comments",
+// Hacker News' "Article URL: ... Comments URL: ..."): better nothing.
+func snippet(summary string) string {
+	s := strings.TrimSpace(summary)
+	if strings.EqualFold(s, "comments") || strings.HasPrefix(s, "Article URL:") || strings.HasPrefix(s, "Comments URL:") {
+		return ""
+	}
+	return item.Truncate(s, snippetRunes)
 }

@@ -78,6 +78,9 @@ func showWindow(ctx context.Context, id, url string) error {
 			mu.Lock()
 			wctx = c
 			mu.Unlock()
+			if ctx.Err() != nil { // asked to stop before the window existed
+				wruntime.Quit(c)
+			}
 		},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: id,

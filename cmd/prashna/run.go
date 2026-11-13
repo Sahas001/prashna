@@ -57,7 +57,7 @@ func (a *app) serve(ctx context.Context, args []string, openInBrowser bool) erro
 			Auth:          auth,
 			SessionKey:    key,
 			About:         server.About{Version: version, DataDir: a.dataDir, ConfigPath: a.cfgPath, Addr: a.cfg.Addr},
-			OpenExternal:  a.externalOpener(),
+			OpenExternal:  openBrowser, // the server only allows it from this computer
 			Log:           a.log,
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
@@ -142,16 +142,6 @@ func (a *app) serve(ctx context.Context, args []string, openInBrowser bool) erro
 // nextMorning is five past midnight, local time.
 func nextMorning(t time.Time) time.Time {
 	return schedule.DailyAt(0, 5, time.Local)(t)
-}
-
-// externalOpener lets the app window hand links to other sites over to
-// the real browser. Only on the reader's own computer: when Prashna is
-// shared on the network, a visitor must not open things on this screen.
-func (a *app) externalOpener() func(string) error {
-	if !a.cfg.LocalOnly() {
-		return nil
-	}
-	return openBrowser
 }
 
 // windowID names this Prashna's window, one per data folder.

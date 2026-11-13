@@ -19,6 +19,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Prashna Wordmark";
+  src: url("fonts/noto-serif-devanagari-wordmark.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --paper: #f6f2ea;
   --paper-2: #efe9de;
@@ -123,8 +131,13 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
   height: 60px; display: flex; align-items: center; gap: 36px;
 }
 .wordmark {
-  font-family: var(--serif); font-style: italic; font-weight: 640;
-  font-size: 25px; letter-spacing: -.01em; text-decoration: none; color: var(--ink);
+  /* The name in its own script: प्रश्न. Only these letters are bundled. */
+  font-family: "Prashna Wordmark", "Noto Serif Devanagari", "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", "Nirmala UI", var(--serif);
+  font-style: normal; font-weight: 600;
+  font-size: 27px; line-height: 1.4; color: var(--ink); text-decoration: none;
+  /* Devanagari hangs from its top line, so its letters sit higher in the
+     line than Latin ones. Lower it to centre with the links beside it. */
+  position: relative; top: .16em;
 }
 .wordmark:hover { color: var(--ink); }
 .wordmark-large { font-size: 34px; display: block; margin-bottom: 28px; }
@@ -454,7 +467,6 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 .feed-url { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feed-tags { margin-top: 3px; font-size: 12.5px; color: var(--ink-2); font-style: italic; }
 .status { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
-.status-err { color: var(--accent); overflow-wrap: anywhere; }
 .feed-actions { display: flex; gap: 6px; flex: none; }
 @media (max-width: 520px) { .feed { flex-direction: column; gap: 10px; } }
 .import-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -541,6 +553,8 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 .reader-info { margin-top: 22px; font-size: 12.5px; color: var(--muted); }
 .reader-wait, .reader-problem { padding: 48px 0; }
 .reader-wait p { font-family: var(--serif); font-style: italic; font-size: 1.1rem; color: var(--ink-2); }
+/* Nothing to highlight when the text couldn't be had. */
+.reader:has(.reader-problem) .highlights:not(:has(.hl)) { display: none; }
 .reader-end { margin-top: 44px; text-align: center; font-size: 1.4rem; color: var(--rule-strong); }
 
 .prose {
@@ -618,7 +632,9 @@ mark.hl-mark.flash, .hl.flash .hl-quote { background: var(--hl-strong); }
 }
 
 /* Add a link */
-.add-link { white-space: nowrap; font-family: var(--sans); font-size: 14px; font-weight: 500; }
+.page-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.page-head-row .btn { flex: none; margin-bottom: 2px; }
+.add-how a { overflow-wrap: anywhere; }
 .add-form { display: flex; gap: 10px; flex-wrap: wrap; max-width: 44rem; }
 .add-form input { flex: 1; min-width: 14rem; }
 .add-form .btn.htmx-request, .add-form.htmx-request .btn { opacity: .5; pointer-events: none; }

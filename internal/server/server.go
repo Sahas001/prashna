@@ -117,7 +117,11 @@ func (s *Server) Handler() http.Handler {
 	for pattern, h := range ui {
 		mux.HandleFunc(pattern, s.requireAuth(h))
 	}
-	return http.NewCrossOriginProtection().Handler(mux)
+	h := http.NewCrossOriginProtection().Handler(mux)
+	if s.Auth.Disabled {
+		h = localHostOnly(h)
+	}
+	return h
 }
 
 func (s *Server) log() *slog.Logger {

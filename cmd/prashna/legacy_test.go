@@ -46,6 +46,15 @@ func TestAdoptLegacyData(t *testing.T) {
 		t.Errorf("fresh install: %v %v", moved, err)
 	}
 
+	// An empty new folder doesn't hide the old data.
+	base2 := t.TempDir()
+	os.MkdirAll(filepath.Join(base2, "radar"), 0o700)
+	os.WriteFile(filepath.Join(base2, "radar", "radar.db"), []byte("x"), 0o600)
+	os.MkdirAll(filepath.Join(base2, "prashna"), 0o700)
+	if moved, err := adoptLegacyDataDir(filepath.Join(base2, "prashna")); !moved || err != nil {
+		t.Errorf("empty new folder: %v %v", moved, err)
+	}
+
 	// Never over an existing new database.
 	both := t.TempDir()
 	os.WriteFile(filepath.Join(both, "radar.db"), []byte("old"), 0o600)

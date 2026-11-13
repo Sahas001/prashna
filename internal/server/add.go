@@ -18,6 +18,10 @@ type addData struct {
 	URL         string
 	Error       string
 	Bookmarklet template.URL
+	// In the desktop window there is no bookmarks bar to drag to: the
+	// page says where to find the button in a browser instead.
+	Window  bool
+	AddPage string
 }
 
 func (s *Server) renderAdd(w http.ResponseWriter, r *http.Request, rawURL, problem string) {
@@ -30,7 +34,7 @@ func (s *Server) renderAdd(w http.ResponseWriter, r *http.Request, rawURL, probl
 	}
 	js := "javascript:void(open('" + scheme + "://" + r.Host + "/add?url='+encodeURIComponent(location.href)))"
 	s.renderPage(w, r, http.StatusOK, "add", "Add a link", "library", addData{
-		URL: rawURL, Error: problem,
+		URL: rawURL, Error: problem, Window: inWindow(r), AddPage: scheme + "://" + r.Host + "/add",
 		Bookmarklet: template.URL(js), // built from our own address only
 	})
 }
@@ -70,7 +74,7 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	it := item.Item{Type: item.TypeArticle, Source: item.SourceSaved, URL: canon, Published: now, FetchedAt: now,
-		Title: strings.TrimPrefix(u.Hostname(), "www.") + strings.TrimSuffix(u.Path, "/")}
+		Title: placeholderTitle(canon)}
 	var art *reader.Article
 	if s.ReadText != nil {
 		fctx, cancel := context.WithTimeout(ctx, readTimeout)

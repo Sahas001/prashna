@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"html/template"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -47,6 +48,7 @@ type readerData struct {
 
 func (s *Server) readerData(ctx context.Context, it item.Item) (readerData, error) {
 	d := readerData{Card: newCard(it, nil, variantReader), Highlights: highlightsData{ItemID: it.ID}}
+	d.Card.Reading = "" // "Opened just now" says nothing on the page you just opened
 	if u, err := url.Parse(it.URL); err == nil {
 		d.Host = strings.TrimPrefix(u.Hostname(), "www.")
 	}
@@ -149,11 +151,54 @@ func (s *Server) fetchArticle(ctx context.Context, it item.Item) (store.Article,
 	ctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 	got, err := s.ReadText(ctx, it.URL)
+	if err != nil && !errors.Is(err, reader.ErrNoText) && !errors.Is(err, reader.ErrNotArticle) && !errors.Is(err, reader.ErrBlocked) {
+		// Stored addresses drop "www.", and a few sites only answer with it.
+		if alt := withWWW(it.URL); alt != "" && ctx.Err() == nil {
+			if again, err2 := s.ReadText(ctx, alt); err2 == nil {
+				got, err = again, nil
+			}
+		}
+	}
 	if err != nil {
 		return store.Article{}, err
 	}
 	art := store.Article{ItemID: it.ID, HTML: got.HTML, Byline: got.Byline, Site: got.Site, Words: got.Words, FetchedAt: time.Now()}
-	return art, s.Store.SaveArticle(ctx, art)
+	if err := s.Store.SaveArticle(ctx, art); err != nil {
+		return art, err
+	}
+	// A link added while its site was unreachable is titled by its
+	// address; now that the page has been read, give it its real title.
+	if it.Source == item.SourceSaved && it.Title == placeholderTitle(it.URL) && got.Title != "" {
+		if err := s.Store.SetTitle(ctx, it.ID, got.Title, got.Excerpt); err != nil {
+			s.log().Error("reader: update title", "err", err)
+		}
+	}
+	return art, nil
+}
+
+// withWWW returns rawURL with "www." put before its host, or "" if that
+// makes no sense (it has one, or the host is an IP address or one label).
+func withWWW(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	host := u.Hostname()
+	if strings.HasPrefix(host, "www.") || !strings.Contains(host, ".") || net.ParseIP(host) != nil {
+		return ""
+	}
+	u.Host = "www." + u.Host
+	return u.String()
+}
+
+// placeholderTitle is what a saved link is called until its page has
+// been read: its address without the scheme.
+func placeholderTitle(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	return strings.TrimPrefix(u.Hostname(), "www.") + strings.TrimSuffix(u.Path, "/")
 }
 
 // keepText stores the text of a saved piece in the background, so the

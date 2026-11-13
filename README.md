@@ -143,4 +143,4 @@ internal/server/    pages (Go templates + htmx), PWA, sign-in
 
 ## Credits
 
-Set in [Literata](https://github.com/googlefonts/literata) (SIL Open Font License, included). Interactions use [htmx](https://htmx.org) (Zero-Clause BSD). The desktop window is made with [Wails](https://wails.io) (MIT). The reader finds article text with [go-readability](https://codeberg.org/readeck/go-readability) (MIT), a port of Mozilla's Readability. Book data from Open Library and Wikidata (CC0).
+Set in [Literata](https://github.com/googlefonts/literata) (SIL Open Font License, included). The name प्रश्न is set in [Noto Serif Devanagari](https://github.com/notofonts/devanagari) (SIL Open Font License, included). Interactions use [htmx](https://htmx.org) (Zero-Clause BSD). The desktop window is made with [Wails](https://wails.io) (MIT). The reader finds article text with [go-readability](https://codeberg.org/readeck/go-readability) (MIT), a port of Mozilla's Readability. Book data from Open Library and Wikidata (CC0).

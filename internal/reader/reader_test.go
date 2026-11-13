@@ -118,11 +118,27 @@ func TestExtract(t *testing.T) {
 		t.Errorf("file: err = %v", err)
 	}
 
-	// The default extractor won't read from this computer.
-	for _, k := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"} {
-		t.Setenv(k, "")
+	// The default extractor won't read from this computer, proxy or no
+	// proxy: Go dials loopback directly even when one is configured.
+	for _, proxy := range []string{"", "http://proxy.invalid:3128"} {
+		t.Setenv("HTTP_PROXY", proxy)
+		t.Setenv("HTTPS_PROXY", proxy)
+		t.Setenv("ALL_PROXY", proxy)
+		if _, err := New("prashna-test").Extract(ctx, srv.URL+"/post"); !errors.Is(err, ErrBlocked) {
+			t.Errorf("local address (proxy %q): err = %v", proxy, err)
+		}
 	}
-	if _, err := New("prashna-test").Extract(ctx, srv.URL+"/post"); !errors.Is(err, ErrBlocked) {
-		t.Errorf("local address: err = %v", err)
+}
+
+func TestPublicOnly(t *testing.T) {
+	for addr, ok := range map[string]bool{
+		"93.184.216.34:443": true, "[2606:2800:220:1::1]:80": true,
+		"127.0.0.1:80": false, "[::1]:80": false, "10.1.2.3:80": false, "192.168.1.1:80": false,
+		"172.16.0.1:80": false, "169.254.169.254:80": false, "100.100.100.100:80": false,
+		"[::ffff:127.0.0.1]:80": false, "[fd00::1]:80": false, "0.0.0.0:80": false, "nonsense": false,
+	} {
+		if err := publicOnly("tcp", addr, nil); (err == nil) != ok {
+			t.Errorf("%s: err = %v, want allowed = %v", addr, err, ok)
+		}
 	}
 }

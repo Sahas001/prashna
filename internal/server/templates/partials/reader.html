@@ -3,7 +3,7 @@
 {{define "reader-text"}}
 <div id="reader-text">
 {{- if .Body}}
-  <p class="reader-info">{{.Minutes}} min read<span class="sep" aria-hidden="true">·</span>kept on this computer</p>
+  <p class="reader-info">{{.Minutes}} min read</p>
   <div class="prose" id="article" data-item="{{.Card.Item.ID}}">{{.Body}}</div>
   <p class="reader-end" aria-hidden="true">❧</p>
 {{- else if .Pending}}

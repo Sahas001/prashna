@@ -102,9 +102,12 @@ document.addEventListener("htmx:afterSettle", drawHighlights);
 function selectedRange() {
   const root = articleEl(), sel = document.getSelection();
   if (!root || !sel || sel.isCollapsed || !sel.rangeCount) return null;
-  const r = sel.getRangeAt(0);
-  if (!root.contains(r.startContainer) || !root.contains(r.endContainer) || !r.toString().trim()) return null;
-  return r;
+  const r = sel.getRangeAt(0).cloneRange();
+  if (!r.intersectsNode(root)) return null;
+  // A triple click or select-all runs past the article: keep the part inside.
+  if (!root.contains(r.startContainer)) r.setStart(root, 0);
+  if (!root.contains(r.endContainer)) r.setEnd(root, root.childNodes.length);
+  return r.toString().trim() ? r : null;
 }
 
 let hlButton, hlTimer;
@@ -175,7 +178,8 @@ if ("window" in document.documentElement.dataset) {
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-back]")) return history.back();
     const a = e.target.closest("a[href]");
-    if (!a || !/^https?:$/.test(a.protocol) || a.origin === location.origin) return;
+    // data-outside: one of Prashna's own pages, meant for the browser.
+    if (!a || !/^https?:$/.test(a.protocol) || (a.origin === location.origin && !("outside" in a.dataset))) return;
     e.preventDefault();
     fetch("/open-outside", { method: "POST", body: new URLSearchParams({ url: a.href }) })
       .then((r) => { if (!r.ok) throw r; })

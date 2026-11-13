@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
 	"strings"
 	"syscall"
 	"time"
@@ -57,26 +56,32 @@ type Extractor struct {
 
 // New returns an Extractor that refuses to connect to local addresses, so
 // a link in a feed can't make Prashna read from the reader's own network.
-// (When a proxy is configured, connections go to the proxy and the check
-// is left to it.)
 func New(userAgent string) *Extractor {
-	dialer := &net.Dialer{Timeout: 15 * time.Second}
-	if !proxyConfigured() {
-		dialer.Control = publicOnly
-	}
-	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.DialContext = dialer.DialContext
-	return &Extractor{HTTP: &http.Client{Transport: tr, Timeout: 30 * time.Second}, UserAgent: userAgent}
+	direct := http.DefaultTransport.(*http.Transport).Clone()
+	direct.Proxy = nil
+	direct.DialContext = (&net.Dialer{Timeout: 15 * time.Second, Control: publicOnly}).DialContext
+	proxied := http.DefaultTransport.(*http.Transport).Clone()
+	return &Extractor{HTTP: &http.Client{Transport: guarded{direct, proxied}, Timeout: 30 * time.Second}, UserAgent: userAgent}
 }
 
-func proxyConfigured() bool {
-	for _, k := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"} {
-		if os.Getenv(k) != "" {
-			return true
-		}
+// guarded sends each request (every redirect hop is one) either through
+// the reader's proxy, when the environment names one for that address, or
+// straight out through a dialer that only connects to public addresses.
+// Deciding per request matters: Go never uses a proxy for localhost or
+// NO_PROXY hosts, and those are exactly the ones to refuse.
+type guarded struct{ direct, proxied http.RoundTripper }
+
+func (g guarded) RoundTrip(req *http.Request) (*http.Response, error) {
+	if p, err := http.ProxyFromEnvironment(req); err == nil && p != nil {
+		return g.proxied.RoundTrip(req)
 	}
-	return false
+	return g.direct.RoundTrip(req)
 }
+
+// cgnat is shared address space (RFC 6598): carrier NAT and overlay
+// networks such as Tailscale. Not public, though net/netip doesn't call
+// it private.
+var cgnat = netip.MustParsePrefix("100.64.0.0/10")
 
 // publicOnly runs after DNS resolution, on the address actually dialed.
 func publicOnly(network, address string, _ syscall.RawConn) error {
@@ -86,7 +91,7 @@ func publicOnly(network, address string, _ syscall.RawConn) error {
 	}
 	ip := ap.Addr().Unmap()
 	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-		ip.IsMulticast() || ip.IsUnspecified() {
+		ip.IsMulticast() || ip.IsUnspecified() || cgnat.Contains(ip) {
 		return fmt.Errorf("%w: %s", ErrBlocked, ip)
 	}
 	return nil

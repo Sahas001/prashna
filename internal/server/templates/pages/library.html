@@ -1,7 +1,10 @@
 {{define "content"}}
-<header class="page-head">
-  <h1>Library</h1>
-  <p class="dek">What you’ve saved, loved and read, kept on this computer. <a class="add-link" href="/add">Add a link</a></p>
+<header class="page-head page-head-row">
+  <div>
+    <h1>Library</h1>
+    <p class="dek">What you’ve saved, loved and read, kept on this computer.</p>
+  </div>
+  <a class="btn btn-small" href="/add">Add a link</a>
 </header>
 <nav class="tabs" aria-label="Shelves">
   {{- range .Tabs}}<a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}{{if .Count}} <span class="tab-count">{{.Count}}</span>{{end}}</a>{{end}}
