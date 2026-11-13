@@ -19,6 +19,15 @@
   font-display: swap;
 }
 
+/* STIX Two Math, for formulas in papers: a serif that sits well beside
+   Literata. Only fetched by pages that contain maths. */
+@font-face {
+  font-family: "Prashna Math";
+  src: local("STIX Two Math"), url("fonts/stix-two-math.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: "Prashna Wordmark";
   src: url("fonts/noto-serif-devanagari-wordmark.woff2") format("woff2");
@@ -594,7 +603,7 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 .prose sup, .prose sub { line-height: 0; font-size: .72em; }
 
 /* Papers: maths, numbered equations, abstract, notes and references. */
-.prose math { font-family: "STIX Two Math", "Latin Modern Math", "Cambria Math", "Noto Sans Math", "DejaVu Math TeX Gyre", math; font-size: 1.02em; hyphens: manual; }
+.prose math { font-family: "Prashna Math", "STIX Two Math", "Cambria Math", "Latin Modern Math", math; font-size: 1.04em; hyphens: manual; }
 .prose .p-eq {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 12px;
   margin: 1.5em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; hyphens: manual;
