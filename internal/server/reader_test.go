@@ -9,8 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sahas001/prashna/internal/item"
 	"github.com/Sahas001/prashna/internal/reader"
 )
+
+// itemID is the ID an address is stored under.
+func itemID(rawURL string) string {
+	canon, _ := item.CanonicalURL(rawURL)
+	return item.IDFor(canon)
+}
 
 func TestReader(t *testing.T) {
 	e := newEnv(t, Auth{Disabled: true})
@@ -23,7 +30,7 @@ func TestReader(t *testing.T) {
 		return reader.Article{HTML: "<p>The <em>text</em> of the piece.</p>", Site: "Example Blog", Words: 460}, nil
 	}
 	c := client()
-	paper, essay, news := e.items[0], e.items[1], e.items[2]
+	essay, news := e.items[1], e.items[2]
 
 	// The page loads at once and fetches the text itself.
 	resp, body := do(t, c, "GET", e.srv.URL+"/read/"+essay.ID, nil, nil)
@@ -64,10 +71,11 @@ func TestReader(t *testing.T) {
 		t.Errorf("problem notice: %s", body)
 	}
 
-	// Papers and books go to their own pages.
-	resp, _ = do(t, c, "GET", e.srv.URL+"/read/"+paper.ID, nil, nil)
-	if resp.StatusCode != 303 || resp.Header.Get("Location") != paper.URL {
-		t.Errorf("paper: %d %s", resp.StatusCode, resp.Header.Get("Location"))
+	// Books go to their own pages.
+	book := e.items[3]
+	resp, _ = do(t, c, "GET", e.srv.URL+"/read/"+book.ID, nil, nil)
+	if resp.StatusCode != 303 || resp.Header.Get("Location") != book.URL {
+		t.Errorf("book: %d %s", resp.StatusCode, resp.Header.Get("Location"))
 	}
 	if resp, _ = do(t, c, "GET", e.srv.URL+"/read/0000000000000000", nil, nil); resp.StatusCode != 404 {
 		t.Errorf("unknown item: %d", resp.StatusCode)
@@ -175,5 +183,51 @@ func TestHighlightsAndNotes(t *testing.T) {
 	post("/items/"+essay.ID+"/note", url.Values{"note": {""}})
 	if n, _ := e.st.ItemNote(context.Background(), essay.ID); n != "" {
 		t.Errorf("note not cleared: %q", n)
+	}
+}
+
+func TestReaderPapers(t *testing.T) {
+	e := newEnv(t, Auth{Disabled: true})
+	hasHTML := false
+	var asked []string
+	e.s.ReadText = func(_ context.Context, u string) (reader.Article, error) {
+		asked = append(asked, u)
+		if !hasHTML {
+			return reader.Article{}, reader.ErrNoHTML
+		}
+		return reader.Article{HTML: `<p>We propose <math display="inline"><mi>x</mi></math>.</p><div class="p-eq"><math display="block"><mi>y</mi></math><small class="p-eqno">(1)</small></div>`, Site: "arXiv", Words: 900}, nil
+	}
+	c := client()
+	paper := e.items[0]
+
+	// An arXiv paper opens in the reader, with a link to its PDF.
+	resp, body := do(t, c, "GET", e.srv.URL+"/read/"+paper.ID, nil, nil)
+	if resp.StatusCode != 200 || !strings.Contains(body, `href="https://arxiv.org/pdf/2611.00001"`) || !strings.Contains(body, "Read on arxiv.org") {
+		t.Fatalf("paper page: %d", resp.StatusCode)
+	}
+	// No web version: the abstract, and the PDF one click away. No
+	// pointless second try at www.arxiv.org.
+	_, body = do(t, c, "GET", e.srv.URL+"/read/"+paper.ID+"/text", nil, nil)
+	for _, want := range []string{"only available as a PDF", "about consensus", "Open the PDF", `class="p-abstract"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("fallback missing %q in %s", want, body)
+		}
+	}
+	if len(asked) != 1 || asked[0] != paper.URL {
+		t.Errorf("asked %v", asked)
+	}
+	// With one, the paper itself, maths and all.
+	hasHTML = true
+	_, body = do(t, c, "GET", e.srv.URL+"/read/"+paper.ID+"/text", nil, nil)
+	for _, want := range []string{`<math display="block"><mi>y</mi></math>`, `<small class="p-eqno">(1)</small>`, "4 min read"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("paper text missing %q in %s", want, body)
+		}
+	}
+
+	// A pasted arXiv address is saved as a paper.
+	do(t, c, "POST", e.srv.URL+"/add", url.Values{"url": {"https://arxiv.org/abs/1706.03762v7"}}, nil)
+	if it, err := e.st.Get(context.Background(), itemID("https://arxiv.org/abs/1706.03762v7")); err != nil || it.Type != "paper" {
+		t.Errorf("added paper: %+v %v", it, err)
 	}
 }

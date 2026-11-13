@@ -44,9 +44,10 @@ func Sanitize(n *html.Node, base *url.URL) (string, int) {
 }
 
 type sanitizer struct {
-	b     strings.Builder
-	base  *url.URL
-	words int
+	b      strings.Builder
+	base   *url.URL
+	words  int
+	inMath int // depth inside <math>
 }
 
 func (s *sanitizer) children(n *html.Node) {
@@ -72,8 +73,16 @@ func (s *sanitizer) element(n *html.Node) {
 	if a == atom.H1 {
 		a = atom.H2 // the page has its own h1: the piece's title
 	}
-	// Foreign content (svg, math) and unknown tags have no atom or a
-	// namespace: never written out.
+	if n.Namespace == "math" {
+		s.math(n)
+		return
+	}
+	// HTML inside a formula is legal in a few places and is where parser
+	// tricks live. Formulas here are maths and text, nothing else.
+	if s.inMath > 0 {
+		return
+	}
+	// Other foreign content (svg) is never written out.
 	if n.Namespace != "" || dropped[a] {
 		return
 	}
@@ -84,8 +93,11 @@ func (s *sanitizer) element(n *html.Node) {
 	name := a.String()
 	switch a {
 	case atom.A:
-		href := s.link(attr(n, "href"), "http", "https", "mailto")
-		if href == "" {
+		raw := strings.TrimSpace(attr(n, "href"))
+		href := s.link(raw, "http", "https", "mailto")
+		// A link within the page (a footnote, a citation) would lead to
+		// the original site, not to its target here: keep only the text.
+		if href == "" || strings.HasPrefix(raw, "#") {
 			s.children(n)
 			return
 		}
@@ -97,7 +109,11 @@ func (s *sanitizer) element(n *html.Node) {
 		}
 		// The app's content policy only loads images over https.
 		src = "https://" + strings.TrimPrefix(strings.TrimPrefix(src, "http://"), "https://")
-		s.b.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(attr(n, "alt")) +
+		alt := attr(n, "alt")
+		if alt == "Refer to caption" { // LaTeXML's stand-in for "no description"
+			alt = ""
+		}
+		s.b.WriteString(`<img src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(alt) +
 			`" loading="lazy" referrerpolicy="no-referrer">`)
 		return
 	case atom.Td, atom.Th:
@@ -109,13 +125,13 @@ func (s *sanitizer) element(n *html.Node) {
 		}
 		s.b.WriteString(">")
 	case atom.Ol:
-		s.b.WriteString("<ol")
+		s.b.WriteString("<ol" + styleClass(n))
 		if v, err := strconv.Atoi(attr(n, "start")); err == nil && v != 1 {
 			s.b.WriteString(` start="` + strconv.Itoa(v) + `"`)
 		}
 		s.b.WriteString(">")
 	default:
-		s.b.WriteString("<" + name + ">")
+		s.b.WriteString("<" + name + styleClass(n) + ">")
 	}
 	if void[a] {
 		return
@@ -153,4 +169,73 @@ func attr(n *html.Node, key string) string {
 		}
 	}
 	return ""
+}
+
+// styleClasses are the only class names kept: hooks for the reader's own
+// stylesheet, set by this package when it restructures a paper (arxiv.go).
+// A page that uses them itself gains nothing but that styling.
+var styleClasses = map[string]bool{"p-eq": true, "p-eqno": true, "p-notes": true, "p-abstract": true, "p-refs": true}
+
+func styleClass(n *html.Node) string {
+	for _, c := range strings.Fields(attr(n, "class")) {
+		if styleClasses[c] {
+			return ` class="` + c + `"`
+		}
+	}
+	return ""
+}
+
+// MathML: the presentation elements browsers draw (MathML Core), and
+// the attributes that affect layout. No links, actions or annotations.
+var mathElements = map[string]bool{
+	"math": true, "semantics": true, "mrow": true, "mi": true, "mn": true, "mo": true, "mtext": true, "mspace": true, "ms": true,
+	"msup": true, "msub": true, "msubsup": true, "mfrac": true, "msqrt": true, "mroot": true,
+	"mover": true, "munder": true, "munderover": true, "mmultiscripts": true, "mprescripts": true, "none": true,
+	"mtable": true, "mtr": true, "mtd": true, "mstyle": true, "mpadded": true, "mphantom": true, "merror": true,
+}
+
+var mathAttrs = map[string]bool{
+	"display": true, "mathvariant": true, "displaystyle": true, "scriptlevel": true, "stretchy": true, "fence": true,
+	"separator": true, "largeop": true, "movablelimits": true, "symmetric": true, "accent": true, "accentunder": true,
+	"lspace": true, "rspace": true, "minsize": true, "maxsize": true, "linethickness": true, "width": true, "height": true,
+	"depth": true, "voffset": true, "columnalign": true, "rowalign": true, "columnspan": true, "rowspan": true, "form": true,
+}
+
+func plainValue(v string) bool {
+	if len(v) > 40 {
+		return false
+	}
+	for _, c := range v {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune(" .%+-", c)) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *sanitizer) math(n *html.Node) {
+	name := strings.ToLower(n.Data)
+	if name == "annotation" || name == "annotation-xml" {
+		return // the TeX source: not shown, and not part of the text
+	}
+	if !mathElements[name] {
+		s.children(n)
+		return
+	}
+	s.b.WriteString("<" + name)
+	for _, a := range n.Attr {
+		k := strings.ToLower(a.Key)
+		switch {
+		case a.Namespace != "":
+		case name == "math" && k == "alttext":
+			s.b.WriteString(` alttext="` + html.EscapeString(a.Val) + `"`)
+		case mathAttrs[k] && plainValue(a.Val):
+			s.b.WriteString(" " + k + `="` + a.Val + `"`)
+		}
+	}
+	s.b.WriteString(">")
+	s.inMath++
+	s.children(n)
+	s.inMath--
+	s.b.WriteString("</" + name + ">")
 }

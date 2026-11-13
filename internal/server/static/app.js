@@ -71,6 +71,7 @@ function markRange(root, start, end, id) {
     if (to < t.data.length) t.splitText(to);
     if (from > 0) t = t.splitText(from);
     if (!t.data.trim()) continue; // spacing between blocks
+    if (t.parentElement.closest("math")) continue; // a <mark> inside a formula would break it
     const m = document.createElement("mark");
     m.className = "hl-mark";
     m.dataset.hl = id;

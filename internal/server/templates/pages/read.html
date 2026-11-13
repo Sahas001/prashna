@@ -4,6 +4,7 @@
     {{template "meta" .Card}}
     <h1 class="reader-title">{{.Card.Item.Title}}</h1>
     <p class="byline">{{if .Card.Byline}}{{.Card.Byline}} · {{end}}<a href="{{.Card.Item.URL}}" target="_blank" rel="noopener noreferrer">Read on {{if .Host}}{{.Host}}{{else}}the original site{{end}}</a>
+      {{- if .PDF}} · <a href="{{.PDF}}" target="_blank" rel="noopener noreferrer">PDF</a>{{end}}
       {{- if .Card.Discussion}} · <a href="{{.Card.Discussion}}" target="_blank" rel="noopener noreferrer">discussion</a>{{end}}</p>
     {{template "reader-actions" .Card}}
   </header>

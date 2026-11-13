@@ -41,6 +41,8 @@ var (
 	// ErrBlocked means the address points at this computer or the local
 	// network, which pages from the internet have no business linking to.
 	ErrBlocked = errors.New("address is on the local network")
+	// ErrNoHTML means a paper has no web version, only a PDF.
+	ErrNoHTML = errors.New("no web version of this paper")
 )
 
 const (
@@ -52,6 +54,10 @@ const (
 type Extractor struct {
 	HTTP      *http.Client
 	UserAgent string
+	// ArxivHTML lists where web versions of arXiv papers are looked for,
+	// in order; the paper's ID is appended. Empty means arXiv itself and
+	// then ar5iv, its archive of older papers.
+	ArxivHTML []string
 }
 
 // New returns an Extractor that refuses to connect to local addresses, so
@@ -97,15 +103,36 @@ func publicOnly(network, address string, _ syscall.RawConn) error {
 	return nil
 }
 
-// Extract fetches pageURL and returns its readable content.
+// Extract fetches pageURL and returns its readable content. An arXiv
+// paper's address gets the paper itself, from arXiv's web version of it.
 func (e *Extractor) Extract(ctx context.Context, pageURL string) (Article, error) {
 	u, err := url.Parse(pageURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Article{}, fmt.Errorf("%w: %s", ErrNotArticle, pageURL)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if id := ArxivID(pageURL); id != "" {
+		return e.extractArxiv(ctx, id)
+	}
+	body, ct, final, err := e.get(ctx, u.String())
 	if err != nil {
 		return Article{}, err
+	}
+	return FromHTML(body, ct, final)
+}
+
+// statusError is a response other than 200 OK.
+type statusError struct{ code int }
+
+func (e *statusError) Error() string {
+	return fmt.Sprintf("the site answered %d %s", e.code, http.StatusText(e.code))
+}
+
+// get fetches an HTML page: its bytes, content type and final address
+// (after redirects).
+func (e *Extractor) get(ctx context.Context, pageURL string) ([]byte, string, *url.URL, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+	if err != nil {
+		return nil, "", nil, err
 	}
 	if e.UserAgent != "" {
 		req.Header.Set("User-Agent", e.UserAgent)
@@ -113,27 +140,27 @@ func (e *Extractor) Extract(ctx context.Context, pageURL string) (Article, error
 	req.Header.Set("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5")
 	resp, err := e.HTTP.Do(req)
 	if err != nil {
-		return Article{}, err
+		return nil, "", nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return Article{}, fmt.Errorf("the site answered %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		return nil, "", nil, &statusError{resp.StatusCode}
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxPageBytes+1))
 	if err != nil {
-		return Article{}, err
+		return nil, "", nil, err
 	}
 	if len(body) > maxPageBytes {
-		return Article{}, fmt.Errorf("%w: page is too large", ErrNotArticle)
+		return nil, "", nil, fmt.Errorf("%w: page is too large", ErrNotArticle)
 	}
 	ct := resp.Header.Get("Content-Type")
 	if ct == "" {
 		ct = http.DetectContentType(body)
 	}
 	if !strings.Contains(strings.ToLower(ct), "html") {
-		return Article{}, fmt.Errorf("%w: %s", ErrNotArticle, ct)
+		return nil, "", nil, fmt.Errorf("%w: %s", ErrNotArticle, ct)
 	}
-	return FromHTML(body, ct, resp.Request.URL)
+	return body, ct, resp.Request.URL, nil
 }
 
 // FromHTML extracts the article from a page's bytes. base is the page's

@@ -551,7 +551,9 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 }
 .reader-head .byline { margin-top: 12px; font-size: 14px; }
 .reader-info { margin-top: 22px; font-size: 12.5px; color: var(--muted); }
-.reader-wait, .reader-problem { padding: 48px 0; }
+.reader-wait { padding: 48px 0; }
+.reader-problem { padding: 8px 0 32px; }
+.reader-problem .notice { padding-top: 28px; }
 .reader-wait p { font-family: var(--serif); font-style: italic; font-size: 1.1rem; color: var(--ink-2); }
 /* Nothing to highlight when the text couldn't be had. */
 .reader:has(.reader-problem) .highlights:not(:has(.hl)) { display: none; }
@@ -590,6 +592,28 @@ input[type="checkbox"] { width: 17px; height: 17px; min-height: 0; padding: 0; a
 .prose th, .prose td { padding: 7px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
 .prose th { font-weight: 650; border-bottom-color: var(--rule-strong); }
 .prose sup, .prose sub { line-height: 0; font-size: .72em; }
+
+/* Papers: maths, numbered equations, abstract, notes and references. */
+.prose math { font-family: "STIX Two Math", "Latin Modern Math", "Cambria Math", "Noto Sans Math", "DejaVu Math TeX Gyre", math; font-size: 1.02em; hyphens: manual; }
+.prose .p-eq {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 12px;
+  margin: 1.5em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; hyphens: manual;
+}
+.prose .p-eq > * { grid-column: 2; margin: 0; }
+.prose .p-eq > .p-eqno { grid-column: 3; justify-self: end; font-family: var(--sans); font-size: 13.5px; color: var(--muted); }
+.prose .p-eq + .p-eq { margin-top: -.7em; }
+.prose .p-abstract { padding: 4px 0 4px 1.1em; border-left: 3px solid var(--rule-strong); color: var(--ink-2); font-size: .95em; line-height: 1.66; }
+.prose .p-abstract h6 { margin: 0 0 .5em; font-family: var(--sans); font-size: 11.5px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.prose .p-notes, .prose .p-refs { font-family: var(--sans); font-size: .76em; line-height: 1.55; color: var(--ink-2); hyphens: manual; }
+.prose .p-notes { margin-top: 3em; }
+.prose .p-notes h2 { font-family: var(--serif); font-size: 1.5rem; color: var(--ink); }
+.prose .p-notes ol { margin-top: 1em; }
+.prose .p-refs { list-style: none; padding-left: 0; }
+.prose .p-refs li { padding-left: 2.6em; text-indent: -2.6em; }
+.prose .p-refs li + li { margin-top: .7em; }
+.prose figure > table, .prose figure > img, .prose figure > div { margin-left: auto; margin-right: auto; }
+.prose figure > table { width: fit-content; }
+
 .prose ::selection { background: var(--hl-strong); }
 
 :root { --hl: #f6e3a1; --hl-strong: #efcf6a; }

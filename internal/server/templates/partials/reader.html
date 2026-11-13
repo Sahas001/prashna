@@ -11,11 +11,20 @@
     <p>Getting the text<span class="ellipsis" aria-hidden="true"></span></p>
   </div>
 {{- else}}
-  <div class="notice reader-problem">
-    <p>{{.Problem}}</p>
-    <div class="notice-actions">
-      <a class="btn btn-primary" href="{{.Card.Item.URL}}" target="_blank" rel="noopener noreferrer">Read on {{if .Host}}{{.Host}}{{else}}the original site{{end}}</a>
-      <button type="button" class="btn btn-quiet" hx-get="/read/{{.Card.Item.ID}}/text" hx-target="#reader-text" hx-swap="outerHTML">Try again</button>
+  <div class="reader-problem">
+    {{- if .Abstract}}
+    <div class="prose"><div class="p-abstract"><h6>Abstract</h6><p>{{.Abstract}}</p></div></div>
+    {{- end}}
+    <div class="notice">
+      <p>{{.Problem}}</p>
+      <div class="notice-actions">
+        {{- if .PDF}}
+        <a class="btn btn-primary" href="{{.PDF}}" target="_blank" rel="noopener noreferrer">Open the PDF</a>
+        {{- else}}
+        <a class="btn btn-primary" href="{{.Card.Item.URL}}" target="_blank" rel="noopener noreferrer">Read on {{if .Host}}{{.Host}}{{else}}the original site{{end}}</a>
+        {{- end}}
+        <button type="button" class="btn btn-quiet" hx-get="/read/{{.Card.Item.ID}}/text" hx-target="#reader-text" hx-swap="outerHTML">Try again</button>
+      </div>
     </div>
   </div>
 {{- end}}

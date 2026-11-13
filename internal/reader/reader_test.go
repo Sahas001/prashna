@@ -66,12 +66,12 @@ func TestSanitizeAttributes(t *testing.T) {
 	got, words := Sanitize(doc, nil)
 	want := `<div><h2>Title</h2><ol start="3"><li>one</li></ol>` +
 		`<table><tbody><tr><td colspan="2">a</td><td>b</td></tr></tbody></table>` +
-		`kept <b>text</b>d</div>`
+		`kept <b>text</b><math><mi>x</mi></math>d</div>`
 	if got != want {
 		t.Errorf("got  %s\nwant %s", got, want)
 	}
-	if words != 7 {
-		t.Errorf("words = %d, want 7", words)
+	if words != 8 {
+		t.Errorf("words = %d, want 8", words)
 	}
 }
 

@@ -16,10 +16,17 @@ import (
 	"github.com/Sahas001/prashna/internal/store"
 )
 
-// readable reports whether an item opens in the reader: pieces that are
-// web pages. Papers and books keep linking to their own pages.
+// readable reports whether an item opens in the reader: web pages, and
+// arXiv papers (read from arXiv's web version). Books, and papers from
+// anywhere else, keep linking to their own pages.
 func readable(it item.Item) bool {
-	return it.Type == item.TypeArticle || it.Type == item.TypeNews
+	switch it.Type {
+	case item.TypeArticle, item.TypeNews:
+		return true
+	case item.TypePaper:
+		return reader.ArxivID(it.URL) != ""
+	}
+	return false
 }
 
 const (
@@ -42,6 +49,8 @@ type readerData struct {
 	Minutes    int
 	Pending    bool   // the text is fetched after the page loads
 	Problem    string // why there is no text
+	Abstract   string // a paper's abstract, shown when its text can't be
+	PDF        string // a paper's PDF
 	Highlights highlightsData
 	Note       string
 }
@@ -49,6 +58,10 @@ type readerData struct {
 func (s *Server) readerData(ctx context.Context, it item.Item) (readerData, error) {
 	d := readerData{Card: newCard(it, nil, variantReader), Highlights: highlightsData{ItemID: it.ID}}
 	d.Card.Reading = "" // "Opened just now" says nothing on the page you just opened
+	if id := reader.ArxivID(it.URL); id != "" {
+		d.PDF = reader.ArxivPDF(id)
+		d.Abstract = it.Summary
+	}
 	if u, err := url.Parse(it.URL); err == nil {
 		d.Host = strings.TrimPrefix(u.Hostname(), "www.")
 	}
@@ -151,7 +164,7 @@ func (s *Server) fetchArticle(ctx context.Context, it item.Item) (store.Article,
 	ctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 	got, err := s.ReadText(ctx, it.URL)
-	if err != nil && !errors.Is(err, reader.ErrNoText) && !errors.Is(err, reader.ErrNotArticle) && !errors.Is(err, reader.ErrBlocked) {
+	if err != nil && !errors.Is(err, reader.ErrNoText) && !errors.Is(err, reader.ErrNotArticle) && !errors.Is(err, reader.ErrBlocked) && !errors.Is(err, reader.ErrNoHTML) {
 		// Stored addresses drop "www.", and a few sites only answer with it.
 		if alt := withWWW(it.URL); alt != "" && ctx.Err() == nil {
 			if again, err2 := s.ReadText(ctx, alt); err2 == nil {
@@ -216,6 +229,8 @@ func (s *Server) keepText(it item.Item) {
 
 func readProblem(err error) string {
 	switch {
+	case errors.Is(err, reader.ErrNoHTML):
+		return "This paper is only available as a PDF, so it can’t be shown here."
 	case errors.Is(err, reader.ErrNotArticle):
 		return "This isn’t a page Prashna can show here. It may be a PDF, a video or a download."
 	case errors.Is(err, reader.ErrNoText):

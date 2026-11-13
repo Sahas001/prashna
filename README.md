@@ -51,7 +51,7 @@ The first time, Prashna asks what you like to read. Pick a few topics, name auth
 - **Search** covers everything Prashna has ever found you.
 - **Interests**, **Feeds** and **Settings** are where you tell it more.
 
-Essays and discussions open in Prashna's own **reader**: just the text, set for reading, without the site around it. The text is kept on your computer (saving a piece fetches it right away), so you can read it later without the internet. Select any passage to **highlight** it, add a note to a highlight, or write a note on the whole piece. If a site won't give up its text (a sign-in wall, a PDF), the reader says so and links to the original. Papers and books open on their own pages.
+Essays and discussions open in Prashna's own **reader**: just the text, set for reading, without the site around it. The text is kept on your computer (saving a piece fetches it right away), so you can read it later without the internet. Select any passage to **highlight** it, add a note to a highlight, or write a note on the whole piece. If a site won't give up its text (a sign-in wall, a PDF), the reader says so and links to the original. **Papers** from arXiv open in the reader too, from arXiv's own web version: equations, figures, tables, footnotes (gathered into a list of notes) and references, all set like the rest of the app, and highlightable. A paper that exists only as a PDF shows its abstract and a button for the PDF. Books open on their own pages.
 
 Prashna isn't limited to what its sources find. **Add a link** (in the Library) saves any page from the web to your reading list, and the *Save to Prashna* button on that page can be dragged to your bookmarks bar to do the same from whatever you're looking at. Links you add never show up in an edition; they're already yours.
 
@@ -132,7 +132,7 @@ The rest of the code is one Go module with no CGO (pure-Go SQLite), so `CGO_ENAB
 ```
 cmd/prashna/          the app: CLI, background fetching, autostart, the desktop window
 internal/fetch/     arXiv, Hacker News, RSS/Atom, Open Library, Wikidata
-internal/reader/    the reader: fetch a page, keep the article, strip everything unsafe
+internal/reader/    the reader: fetch a page or an arXiv paper, keep the text, strip everything unsafe
 internal/pipeline/  fetch, deduplicate, save, rescore
 internal/score/     interest matching, TF-IDF similarity, recency
 internal/learn/     the ratings model: features, logistic regression, cross-validation

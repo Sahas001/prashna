@@ -76,6 +76,9 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) {
 	it := item.Item{Type: item.TypeArticle, Source: item.SourceSaved, URL: canon, Published: now, FetchedAt: now,
 		Title: placeholderTitle(canon)}
 	var art *reader.Article
+	if reader.ArxivID(canon) != "" {
+		it.Type = item.TypePaper
+	}
 	if s.ReadText != nil {
 		fctx, cancel := context.WithTimeout(ctx, readTimeout)
 		got, err := s.ReadText(fctx, link) // as given: the canonical form drops "www."
