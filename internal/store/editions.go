@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Sahas001/prashna/internal/item"
 )
@@ -250,7 +251,7 @@ func (s *Store) Revisit(ctx context.Context, before time.Time, limit int) ([]ite
 // Search finds items whose title, summary, authors or tags contain every
 // word of q (case-insensitive), best scores and recent opens first.
 func (s *Store) Search(ctx context.Context, q string, limit int) ([]item.Item, error) {
-	words := strings.Fields(strings.ToLower(q))
+	words := SearchWords(q)
 	if len(words) == 0 {
 		return nil, nil
 	}
@@ -259,13 +260,31 @@ func (s *Store) Search(ctx context.Context, q string, limit int) ([]item.Item, e
 	var args []any
 	for _, w := range words[:min(len(words), 8)] {
 		pattern := "%" + esc.Replace(w) + "%"
-		where = append(where, `(lower(title) LIKE ? ESCAPE '\' OR lower(summary) LIKE ? ESCAPE '\' OR lower(authors) LIKE ? ESCAPE '\' OR lower(tags) LIKE ? ESCAPE '\')`)
-		args = append(args, pattern, pattern, pattern, pattern)
+		// Each word must appear somewhere in the piece or in what the
+		// reader wrote about it (highlights and notes).
+		where = append(where, `(lower(title) LIKE ? ESCAPE '\' OR lower(summary) LIKE ? ESCAPE '\'
+			OR lower(authors) LIKE ? ESCAPE '\' OR lower(tags) LIKE ? ESCAPE '\'
+			OR id IN (SELECT item_id FROM highlights WHERE lower(quote) LIKE ? ESCAPE '\' OR lower(note) LIKE ? ESCAPE '\')
+			OR id IN (SELECT item_id FROM item_notes WHERE lower(body) LIKE ? ESCAPE '\'))`)
+		args = append(args, pattern, pattern, pattern, pattern, pattern, pattern, pattern)
 	}
 	// Title matches on the first word rank first.
 	args = append(args, "%"+esc.Replace(words[0])+"%", limit)
 	return s.queryItems(ctx, `SELECT `+itemCols+` FROM items WHERE `+strings.Join(where, " AND ")+
 		` ORDER BY (lower(title) LIKE ? ESCAPE '\') DESC, open_count DESC, score DESC LIMIT ?`, args...)
+}
+
+// SearchWords splits a query into lowercase words, without the
+// punctuation around them: "roots," finds "roots".
+func SearchWords(q string) []string {
+	var out []string
+	for _, w := range strings.Fields(strings.ToLower(q)) {
+		w = strings.TrimFunc(w, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+		if w != "" {
+			out = append(out, w)
+		}
+	}
+	return out
 }
 
 // HasSummary reports whether the stored item with id has a description.

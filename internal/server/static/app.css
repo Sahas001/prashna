@@ -676,6 +676,8 @@ mark.hl-mark.flash, .hl.flash .hl-quote { background: var(--hl-strong); }
 .add-how p { margin-top: 12px; font-family: var(--serif); font-size: 1.04rem; line-height: 1.55; color: var(--ink-2); }
 .bookmarklet { display: inline-block; margin-top: 16px; cursor: grab; }
 
+.story-quote { margin-top: 12px; max-width: var(--prose); }
+
 /* Library > Highlights */
 .noted { padding: 24px 0 22px; }
 .noted + .noted { border-top: 1px solid var(--rule); }

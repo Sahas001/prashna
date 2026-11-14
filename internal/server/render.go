@@ -154,6 +154,7 @@ type card struct {
 	Disliked bool
 	Reading  string // "Opened 3 times, last 2d ago"
 	ReadHref string // the piece in Prashna's reader; "" if it only opens on its own site
+	Quote    string // in search results: the highlight that matched
 }
 
 func newCard(it item.Item, explain func(item.Item) []string, variant string) card {

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -150,5 +151,13 @@ func TestLibrarySearchAndOpens(t *testing.T) {
 	}
 	if !s.HasSummary(ctx, items[0].ID) || s.HasSummary(ctx, "0000000000000000") {
 		t.Error("HasSummary wrong")
+	}
+}
+
+func TestSearchWords(t *testing.T) {
+	got := SearchWords(` "You are not your roots," — Le Guin's c++ `)
+	want := []string{"you", "are", "not", "your", "roots", "le", "guin's", "c"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("SearchWords = %q, want %q", got, want)
 	}
 }

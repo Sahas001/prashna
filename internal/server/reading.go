@@ -385,8 +385,26 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		d.Cards = s.cards(r.Context(), items, "")
+		ids := make([]string, len(items))
+		for i, it := range items {
+			ids[i] = it.ID
+		}
+		quotes, err := s.Store.MatchingQuotes(r.Context(), ids, store.SearchWords(q))
+		if err != nil {
+			s.serverError(w, "search", err)
+			return
+		}
+		for i := range d.Cards {
+			if h, ok := quotes[d.Cards[i].Item.ID]; ok {
+				d.Cards[i].Quote = h.Quote
+			}
+		}
 	}
-	if r.Header.Get("HX-Request") != "" && r.Header.Get("HX-Boosted") == "" {
+	// Only the search box (which targets #results) gets just the results.
+	// Everything else gets the whole page: a link, a reload, and htmx
+	// restoring the page on Back, which also sends HX-Request.
+	w.Header().Set("Vary", "HX-Request, HX-Target")
+	if r.Header.Get("HX-Target") == "results" && r.Header.Get("HX-History-Restore-Request") == "" {
 		s.renderPartial(w, http.StatusOK, "search-results", d)
 		return
 	}

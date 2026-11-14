@@ -366,7 +366,7 @@ func TestPages(t *testing.T) {
 		t.Errorf("missing edition = %d", resp.StatusCode)
 	}
 	// Live search answers with just the results fragment.
-	_, body := do(t, c, "GET", e.srv.URL+"/search?q=consensus", nil, hx)
+	_, body := do(t, c, "GET", e.srv.URL+"/search?q=consensus", nil, map[string]string{"HX-Request": "true", "HX-Target": "results"})
 	if strings.Contains(body, "<html") || !strings.Contains(body, `id="results"`) {
 		t.Errorf("search fragment: %.200s", body)
 	}

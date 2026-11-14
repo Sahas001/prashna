@@ -11,6 +11,7 @@ import (
 
 	"github.com/Sahas001/prashna/internal/item"
 	"github.com/Sahas001/prashna/internal/reader"
+	"github.com/Sahas001/prashna/internal/store"
 )
 
 // itemID is the ID an address is stored under.
@@ -229,5 +230,40 @@ func TestReaderPapers(t *testing.T) {
 	do(t, c, "POST", e.srv.URL+"/add", url.Values{"url": {"https://arxiv.org/abs/1706.03762v7"}}, nil)
 	if it, err := e.st.Get(context.Background(), itemID("https://arxiv.org/abs/1706.03762v7")); err != nil || it.Type != "paper" {
 		t.Errorf("added paper: %+v %v", it, err)
+	}
+}
+
+func TestSearchHighlightsAndBack(t *testing.T) {
+	e := newEnv(t, Auth{Disabled: true})
+	ctx := context.Background()
+	c := client()
+	essay, news := e.items[1], e.items[2]
+	if _, err := e.st.AddHighlight(ctx, store.Highlight{ItemID: essay.ID, Start: 10, End: 40, Quote: "You are not your roots, but you grow from them"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.SetItemNote(ctx, news.ID, "Reminded me of Ursula Le Guin."); err != nil {
+		t.Fatal(err)
+	}
+
+	// The search box asks for just the results; punctuation in the query
+	// doesn't matter, and the matching passage is shown.
+	box := map[string]string{"HX-Request": "true", "HX-Target": "results", "HX-Current-URL": e.srv.URL + "/search"}
+	_, body := do(t, c, "GET", e.srv.URL+"/search?q="+url.QueryEscape(`"you are not your roots,"`), nil, box)
+	if strings.Contains(body, "<html") || !strings.Contains(body, `id="item-`+essay.ID+`"`) ||
+		!strings.Contains(body, `class="hl-quote story-quote">You are not your roots, but you grow from them</blockquote>`) {
+		t.Errorf("highlight search: %s", body)
+	}
+	if _, body = do(t, c, "GET", e.srv.URL+"/search?q=le+guin", nil, box); !strings.Contains(body, `id="item-`+news.ID+`"`) {
+		t.Errorf("note search: %s", body)
+	}
+
+	// Back to a search: htmx asks again for the whole page. It must get
+	// it, not the bare results.
+	restore := map[string]string{"HX-Request": "true", "HX-History-Restore-Request": "true"}
+	for name, hdr := range map[string]map[string]string{"history restore": restore, "boosted link": {"HX-Request": "true", "HX-Boosted": "true"}, "plain": nil} {
+		resp, body := do(t, c, "GET", e.srv.URL+"/search?q=roots", nil, hdr)
+		if resp.StatusCode != 200 || !strings.Contains(body, "<html") || !strings.Contains(body, `id="results"`) || !strings.Contains(body, `class="search-form"`) {
+			t.Errorf("%s: not the full page", name)
+		}
 	}
 }

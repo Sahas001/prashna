@@ -41,7 +41,8 @@
   {{template "meta" .}}
   <h3 class="story-title">{{template "link" .}}</h3>
   {{template "byline" .}}
-  {{- if .Snippet}}<p class="summary">{{.Snippet}}</p>{{end}}
+  {{- if .Quote}}<blockquote class="hl-quote story-quote">{{.Quote}}</blockquote>
+  {{- else if .Snippet}}<p class="summary">{{.Snippet}}</p>{{end}}
   {{- if .Why}}<p class="why">{{.Why}}</p>{{end}}
   {{template "actions" .}}
 </article>
@@ -119,7 +120,7 @@
     <p class="results-count">{{len .Cards}} {{plural (len .Cards) "result" "results"}}{{if eq (len .Cards) 50}} (showing the best 50){{end}}</p>
     <div class="stories">{{range .Cards}}{{template "story" .}}{{end}}</div>
     {{- else}}
-    <p class="quiet">Nothing matches “{{.Query}}”. Search looks at titles, summaries, authors and tags of everything Prashna has found.</p>
+    <p class="quiet">Nothing matches “{{.Query}}”. Search looks at the titles, summaries, authors and tags of everything Prashna has found, and at your highlights and notes.</p>
     {{- end}}
   {{- end}}
 </div>

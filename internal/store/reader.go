@@ -170,6 +170,36 @@ func (s *Store) AnnotatedItems(ctx context.Context, limit, offset int) ([]ItemHi
 	return out, nil
 }
 
+// MatchingQuotes returns, for each of the given items, the first
+// highlight (in reading order) whose quote or note contains every word.
+func (s *Store) MatchingQuotes(ctx context.Context, itemIDs, words []string) (map[string]Highlight, error) {
+	out := map[string]Highlight{}
+	if len(itemIDs) == 0 || len(words) == 0 {
+		return out, nil
+	}
+	for _, id := range itemIDs {
+		hs, err := s.Highlights(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, h := range hs {
+			text := strings.ToLower(h.Quote + " " + h.Note)
+			all := true
+			for _, w := range words {
+				if !strings.Contains(text, w) {
+					all = false
+					break
+				}
+			}
+			if all {
+				out[id] = h
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
 // CountHighlights is the number of highlights across the library.
 func (s *Store) CountHighlights(ctx context.Context) (int, error) {
 	var n int
